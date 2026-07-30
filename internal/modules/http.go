@@ -29,6 +29,18 @@ type probeOutcome struct {
 	body    string
 }
 
+// headerBlob flattens response headers into the "Key: value\n" text the
+// tech/WAF signature databases are written against.
+func (o *probeOutcome) headerBlob() string {
+	var sb strings.Builder
+	for k, vv := range o.headers {
+		for _, v := range vv {
+			sb.WriteString(k + ": " + v + "\n")
+		}
+	}
+	return sb.String()
+}
+
 func (HTTP) Run(ctx context.Context, sc *scanner.ScanContext) error {
 	client := newHTTPClient(sc.Opts.Timeout)
 
@@ -47,7 +59,7 @@ func (HTTP) Run(ctx context.Context, sc *scanner.ScanContext) error {
 	}
 
 	jobs := make(chan string, sc.Opts.Workers)
-	results := make(chan probeOutcome, len(hosts))
+	results := make(chan *scanner.WebResult, len(hosts))
 	var wg sync.WaitGroup
 
 	worker := func() {
@@ -62,9 +74,16 @@ func (HTTP) Run(ctx context.Context, sc *scanner.ScanContext) error {
 			if !ok {
 				continue
 			}
-			results <- *out
 
-			wr := out.web
+			// Signature analysis (wappalyzer + wafw00f passive) happens here so
+			// the response body is dropped as soon as this host is done — queuing
+			// bodies for a later pass costs maxBodyRead × len(hosts) of memory.
+			wr, blob := out.web, out.headerBlob()
+			wr.Technologies = detect.Tech(blob, out.body)
+			wr.WAF = detect.WAF(blob)
+			wr.CDN = detect.CDN(wr.Server)
+			results <- wr
+
 			if host == sc.Target {
 				sc.Found("live", "%s → %d %q [%s]", wr.URL, wr.Status, wr.Title, wr.Server)
 			} else {
@@ -89,21 +108,7 @@ hostLoop:
 	wg.Wait()
 	close(results)
 
-	for out := range results {
-		wr := out.web
-
-		// signature analysis (wappalyzer + wafw00f passive)
-		var sb strings.Builder
-		for k, vv := range out.headers {
-			for _, v := range vv {
-				sb.WriteString(k + ": " + v + "\n")
-			}
-		}
-		headerBlob := sb.String()
-		wr.Technologies = detect.Tech(headerBlob, out.body)
-		wr.WAF = detect.WAF(headerBlob)
-		wr.CDN = detect.CDN(wr.Server)
-
+	for wr := range results {
 		sc.Result.Web = append(sc.Result.Web, *wr)
 	}
 

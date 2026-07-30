@@ -25,6 +25,10 @@ func (TLS) Run(ctx context.Context, sc *scanner.ScanContext) error {
 		Config: &tls.Config{
 			InsecureSkipVerify: true, // we want expired/self-signed certs too
 			ServerName:         sc.Target,
+			// Go refuses < TLS 1.2 by default, so a legacy-only server would
+			// just fail the handshake and be reported as "no TLS". Reporting
+			// TLS 1.0/1.1 is the point of this module — allow negotiating them.
+			MinVersion: tls.VersionTLS10,
 		},
 	}
 	rawConn, err := dialer.DialContext(c, "tcp", net.JoinHostPort(sc.Target, "443"))

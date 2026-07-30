@@ -37,7 +37,10 @@ var dnsTypeName = map[uint16]string{
 	dnsTypePTR: "PTR", dnsTypeMX: "MX", dnsTypeTXT: "TXT", dnsTypeAAAA: "AAAA",
 }
 
-var errShortPacket = errors.New("short dns packet")
+var (
+	errShortPacket     = errors.New("short dns packet")
+	errNamePointerLoop = errors.New("dns name compression pointer loop")
+)
 
 // tryZoneTransfer attempts AXFR against every authoritative NS.
 // On success it records the zone and returns extracted hostnames.
@@ -168,11 +171,17 @@ func buildDNSQuery(domain string, qtype, id uint16) []byte {
 	return buf.Bytes()
 }
 
+// maxNamePointers caps compression-pointer jumps. A hostile nameserver can
+// craft pointers that cycle (e.g. one pointing at itself), which would spin
+// decodeName forever — the pointer target is not required to move forward.
+const maxNamePointers = 64
+
 // decodeName reads a (possibly compressed) domain name at offset.
 // Returns the name and the offset just past the name at its first position.
 func decodeName(msg []byte, offset int) (string, int, error) {
 	var labels []string
 	end := -1
+	pointers := 0
 	for {
 		if offset >= len(msg) {
 			return "", 0, errShortPacket
@@ -191,6 +200,10 @@ func decodeName(msg []byte, offset int) (string, int, error) {
 			ptr := (l&0x3F)<<8 | int(msg[offset+1])
 			if end == -1 {
 				end = offset + 2
+			}
+			pointers++
+			if pointers > maxNamePointers {
+				return "", 0, errNamePointerLoop
 			}
 			offset = ptr
 		default:
