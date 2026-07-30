@@ -32,21 +32,17 @@ func gradientString(s string) string {
 	return b.String()
 }
 
-func scanLogo() string {
-	return strings.Join([]string{
-		`      ┌──────────────────┐`,
-		`      │  · ── + ── ·    │      >_ N E X P R O W L`,
-		`      │  · │  │  │ · ◉  │      ATTACK SURFACE RECONNAISSANCE`,
-		`      │  · │  ◉  │ · ●  │      dns·axfr·sub·ports·http·vhost·tls·takeover`,
-		`      │  · ── + ── ·    │`,
-		`      └──────────────────┘`,
-	}, "\n")
-}
-
-// Banner renders the gradient ASCII scanner banner.
+// Banner renders the minimal NexProwl banner.
 func Banner() {
-	pterm.DefaultCenter.Println(gradientString(scanLogo()))
-	pterm.DefaultCenter.Println(dim.Sprint(strings.Repeat("─", 64)))
+	pterm.DefaultCenter.Println(dim.Sprint("┌──────────────────────────────────────────┐"))
+
+	line := dim.Sprint("│            ") +
+		accent.Sprint(">_") + " " +
+		gradientString("N E X P R O W L") +
+		dim.Sprint("             │")
+	pterm.DefaultCenter.Println(line)
+
+	pterm.DefaultCenter.Println(dim.Sprint("└──────────────────────────────────────────┘"))
 }
 
 // Boot confirms readiness without adding artificial startup delay.
