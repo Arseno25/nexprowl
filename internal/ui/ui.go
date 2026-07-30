@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/pterm/pterm"
@@ -52,7 +51,6 @@ type UI struct {
 	tty     bool
 	stats   Stats
 	lastLen int // visible width of last stats line (for clearing)
-	fed     int64 // atomic: lines printed (unused currently, reserved)
 }
 
 // NewUI creates the renderer. Call Run in a goroutine, then Close when done.
@@ -64,9 +62,6 @@ func NewUI(targetsTotal int) *UI {
 		stats:  Stats{targetsTotal: targetsTotal, start: time.Now()},
 	}
 }
-
-// Events returns the write-end of the event channel (engine emitter).
-func (u *UI) Events() chan<- scanner.Event { return u.events }
 
 // Emitter adapts the channel to scanner.Emitter.
 func (u *UI) Emitter() scanner.Emitter {
@@ -161,7 +156,6 @@ func (u *UI) printLine(ev scanner.Event, body string) {
 		target = strings.Repeat(" ", 24)
 	}
 	fmt.Printf("%s %s %s\n", ts, target, body)
-	atomic.AddInt64(&u.fed, 1)
 	if u.tty {
 		u.renderStatsLine()
 	}
@@ -174,16 +168,14 @@ func (u *UI) renderStatsLine() {
 	s.frame++
 	elapsed := time.Since(s.start).Round(time.Second)
 
-	line := fmt.Sprintf("%s %s%d/%d targets%s  subs %s%d%s  ports %s%d%s  live %s%d%s  tk %s%d%s  %s%s%s",
-		pterm.NewRGB(213, 0, 249).Sprint(frame),
-		"", s.targetsDone, s.targetsTotal, "",
-		"", s.subs, "", "", s.ports, "", "", s.live, "", "", s.takeovers, "",
-		"", elapsed, "")
+	// plain is the uncolored twin, measured to know how much to blank out;
+	// counting runes of the colored string would include the escape codes.
 	plain := fmt.Sprintf("%s %d/%d targets  subs %d  ports %d  live %d  tk %d  %s",
 		frame, s.targetsDone, s.targetsTotal, s.subs, s.ports, s.live, s.takeovers, elapsed)
+	line := strings.Replace(plain, frame, pterm.NewRGB(213, 0, 249).Sprint(frame), 1)
 
 	u.lastLen = len([]rune(plain))
-	fmt.Print("\r" + dim.Sprint(" ")+line)
+	fmt.Print("\r" + dim.Sprint(" ") + line)
 }
 
 func (u *UI) clearStatsLine() {

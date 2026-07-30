@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"sort"
 	"strings"
 	"sync"
@@ -27,6 +28,10 @@ type passiveSource struct {
 	name  string
 	fetch func(ctx context.Context, client *http.Client, domain string) ([]string, error)
 }
+
+// esc escapes the target before it goes into a passive-source URL. Targets
+// come from user files and are not validated as hostnames.
+func esc(domain string) string { return url.QueryEscape(domain) }
 
 var passiveSources = []passiveSource{
 	{"crt.sh", fetchCrtSh},
@@ -54,7 +59,7 @@ func httpGet(ctx context.Context, client *http.Client, url string) ([]byte, erro
 }
 
 func fetchCrtSh(ctx context.Context, client *http.Client, domain string) ([]string, error) {
-	body, err := httpGet(ctx, client, "https://crt.sh/?q=%25."+domain+"&output=json")
+	body, err := httpGet(ctx, client, "https://crt.sh/?q=%25."+esc(domain)+"&output=json")
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +82,7 @@ func fetchCrtSh(ctx context.Context, client *http.Client, domain string) ([]stri
 
 func fetchCertSpotter(ctx context.Context, client *http.Client, domain string) ([]string, error) {
 	body, err := httpGet(ctx, client,
-		"https://api.certspotter.com/v1/issuances?domain="+domain+"&include_subdomains=true&expand=dns_names")
+		"https://api.certspotter.com/v1/issuances?domain="+esc(domain)+"&include_subdomains=true&expand=dns_names")
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +105,7 @@ func fetchCertSpotter(ctx context.Context, client *http.Client, domain string) (
 
 func fetchOTX(ctx context.Context, client *http.Client, domain string) ([]string, error) {
 	body, err := httpGet(ctx, client,
-		"https://otx.alienvault.com/api/v1/indicators/domain/"+domain+"/passive_dns")
+		"https://otx.alienvault.com/api/v1/indicators/domain/"+esc(domain)+"/passive_dns")
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +127,7 @@ func fetchOTX(ctx context.Context, client *http.Client, domain string) ([]string
 }
 
 func fetchHackerTarget(ctx context.Context, client *http.Client, domain string) ([]string, error) {
-	body, err := httpGet(ctx, client, "https://api.hackertarget.com/hostsearch/?q="+domain)
+	body, err := httpGet(ctx, client, "https://api.hackertarget.com/hostsearch/?q="+esc(domain))
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +141,7 @@ func fetchHackerTarget(ctx context.Context, client *http.Client, domain string) 
 }
 
 func fetchAnubis(ctx context.Context, client *http.Client, domain string) ([]string, error) {
-	body, err := httpGet(ctx, client, "https://jldc.me/anubis/subdomains/"+domain)
+	body, err := httpGet(ctx, client, "https://jldc.me/anubis/subdomains/"+esc(domain))
 	if err != nil {
 		return nil, err
 	}
@@ -198,8 +203,12 @@ func (Subdomain) Run(ctx context.Context, sc *scanner.ScanContext) error {
 	mu.Unlock()
 	sc.Log(scanner.LevelInfo, "passive: %d unique from %d sources", passiveUnique, len(passiveSources))
 
-	// Phase 2 — bruteforce with wildcard filtering
+	// Phase 2 — bruteforce with wildcard filtering.
+	// Wildcard detection lives here, not in the dns module: filtering is
+	// useless without it, and `-m sub` must not silently lose it.
 	if !sc.Opts.PassiveOnly && len(sc.Opts.Wordlist) > 0 {
+		sc.DetectWildcard(ctx)
+
 		jobs := make(chan string, sc.Opts.Workers)
 		var bwg sync.WaitGroup
 		var hits int32
@@ -306,11 +315,4 @@ hostLoop:
 	sc.Result.Subdomains = out
 	sc.Log(scanner.LevelSuccess, "%d subdomains discovered", len(out))
 	return nil
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }

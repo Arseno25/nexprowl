@@ -109,8 +109,6 @@ func (DNS) Run(ctx context.Context, sc *scanner.ScanContext) error {
 		sc.Log(scanner.LevelSuccess, "CNAME %s", out.CNAME)
 	}
 
-	sc.DetectWildcard(ctx)
-
 	// Zone transfer attempt (dnsrecon technique) — uses raw DNS wire protocol.
 	if hosts := tryZoneTransfer(ctx, sc); len(hosts) > 0 {
 		sc.Result.Subdomains = append(sc.Result.Subdomains, axfrHostsToSubdomains(sc.Target, hosts)...)

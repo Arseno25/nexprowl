@@ -86,6 +86,12 @@ func Load() (*Config, error) {
 	flag.Usage = usage
 	flag.Parse()
 
+	// A zero/negative pool size starves every module worker loop and hangs
+	// the scan on an unbuffered job channel, so clamp before anything uses it.
+	*workers = atLeast(*workers, 1)
+	*concurrency = atLeast(*concurrency, 1)
+	*timeout = atLeast(*timeout, 1)
+
 	cfg := &Config{
 		Output:   *output,
 		Format:   *format,
@@ -163,6 +169,13 @@ func Load() (*Config, error) {
 		Rate:        *rate,
 	}
 	return cfg, nil
+}
+
+func atLeast(v, floor int) int {
+	if v < floor {
+		return floor
+	}
+	return v
 }
 
 // normalizeResolvers ensures every server is in host:port form.

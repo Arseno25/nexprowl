@@ -23,7 +23,8 @@ func Subdomains() []string {
 	return out
 }
 
-// TopPorts — the ~65 most valuable ports for recon.
+// TopPorts — the 70 most valuable ports for recon. The "top100" spec keyword
+// is kept for compatibility; it has always selected this list.
 var TopPorts = []int{
 	21, 22, 23, 25, 53, 80, 110, 111, 135, 139, 143, 443, 445,
 	993, 995, 1433, 1521, 2049, 2082, 2083, 2086, 2087, 2095,

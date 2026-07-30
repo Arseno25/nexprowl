@@ -212,7 +212,7 @@ func writeMarkdown(path string, results []*scanner.Result) error {
 			b.WriteString("| record | values |\n|---|---|\n")
 			writeDNSRow := func(name string, vals []string) {
 				if len(vals) > 0 {
-					fmt.Fprintf(&b, "| %s | %s |\n", name, strings.Join(vals, ", "))
+					fmt.Fprintf(&b, "| %s | %s |\n", name, mdCell(strings.Join(vals, ", ")))
 				}
 			}
 			writeDNSRow("A", r.DNS.A)
@@ -220,7 +220,7 @@ func writeMarkdown(path string, results []*scanner.Result) error {
 			writeDNSRow("MX", r.DNS.MX)
 			writeDNSRow("NS", r.DNS.NS)
 			if r.DNS.CNAME != "" {
-				fmt.Fprintf(&b, "| CNAME | %s |\n", r.DNS.CNAME)
+				fmt.Fprintf(&b, "| CNAME | %s |\n", mdCell(r.DNS.CNAME))
 			}
 		}
 
@@ -239,7 +239,7 @@ func writeMarkdown(path string, results []*scanner.Result) error {
 			b.WriteString("\n### Virtual hosts\n\n")
 			b.WriteString("| host | status | size | title |\n|---|---|---|---|\n")
 			for _, v := range r.VHosts {
-				fmt.Fprintf(&b, "| %s | %d | %d | %s |\n", v.Host, v.Status, v.Size, v.Title)
+				fmt.Fprintf(&b, "| %s | %d | %d | %s |\n", mdCell(v.Host), v.Status, v.Size, mdCell(v.Title))
 			}
 		}
 
@@ -247,7 +247,7 @@ func writeMarkdown(path string, results []*scanner.Result) error {
 			b.WriteString("\n### Open ports\n\n")
 			b.WriteString("| port | service | banner |\n|---|---|---|\n")
 			for _, p := range r.Ports {
-				fmt.Fprintf(&b, "| %d | %s | %s |\n", p.Port, p.Service, p.Banner)
+				fmt.Fprintf(&b, "| %d | %s | %s |\n", p.Port, p.Service, mdCell(p.Banner))
 			}
 		}
 
@@ -256,8 +256,8 @@ func writeMarkdown(path string, results []*scanner.Result) error {
 			b.WriteString("| url | status | title | server | tech | waf |\n|---|---|---|---|---|---|\n")
 			for _, w := range r.Web {
 				fmt.Fprintf(&b, "| %s | %d | %s | %s | %s | %s |\n",
-					w.URL, w.Status, w.Title, w.Server,
-					strings.Join(w.Technologies, ", "), w.WAF)
+					mdCell(w.URL), w.Status, mdCell(w.Title), mdCell(w.Server),
+					mdCell(strings.Join(w.Technologies, ", ")), mdCell(w.WAF))
 			}
 		}
 
@@ -266,7 +266,7 @@ func writeMarkdown(path string, results []*scanner.Result) error {
 			b.WriteString("| host | ips | cname | source |\n|---|---|---|---|\n")
 			for _, s := range r.Subdomains {
 				fmt.Fprintf(&b, "| %s | %s | %s | %s |\n",
-					s.Host, strings.Join(s.IPs, ", "), s.CNAME, s.Source)
+					mdCell(s.Host), strings.Join(s.IPs, ", "), mdCell(s.CNAME), s.Source)
 			}
 		}
 
@@ -285,7 +285,7 @@ func writeMarkdown(path string, results []*scanner.Result) error {
 			b.WriteString("\n### ⚠️ Takeover candidates\n\n")
 			b.WriteString("| host | cname | service |\n|---|---|---|\n")
 			for _, t := range r.Takeovers {
-				fmt.Fprintf(&b, "| %s | %s | %s |\n", t.Host, t.CNAME, t.Service)
+				fmt.Fprintf(&b, "| %s | %s | %s |\n", mdCell(t.Host), mdCell(t.CNAME), t.Service)
 			}
 		}
 	}
@@ -348,6 +348,13 @@ func sanitizeFileName(s string) string {
 		}
 	}, s)
 }
+
+// mdCell escapes a value for a markdown table cell. Titles, banners and
+// server headers come from the scanned host, so an unescaped "|" lets a
+// target corrupt the report layout.
+var mdCellEscaper = strings.NewReplacer("|", `\|`, "\n", " ", "\r", " ")
+
+func mdCell(s string) string { return mdCellEscaper.Replace(s) }
 
 func orDash(s string) string {
 	if s == "" {

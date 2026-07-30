@@ -123,26 +123,38 @@ func (sc *ScanContext) SetError(format string, args ...any) {
 
 // ─── Wildcard DNS handling ────────────────────────────────
 
-// DetectWildcard resolves a random non-existent subdomain. Zones with
-// wildcard DNS make every bruteforce hit a false positive — record the
-// wildcard IPs so the subdomain module can filter them out.
-func (sc *ScanContext) DetectWildcard(ctx context.Context) {
-	buf := make([]byte, 8)
-	_, _ = rand.Read(buf)
-	host := hex.EncodeToString(buf) + "." + sc.Target
+// wildcardProbes is how many random names are resolved. One is not enough:
+// a wildcard record backed by a rotating pool answers different IPs each
+// time, so a single sample filters only part of the noise.
+const wildcardProbes = 3
 
-	c, cancel := context.WithTimeout(ctx, sc.Opts.Timeout)
-	defer cancel()
-	ips, err := sc.resolver.LookupIP(c, "ip", host)
-	if err != nil || len(ips) == 0 {
-		return
+// DetectWildcard resolves several random non-existent subdomains. Zones with
+// wildcard DNS make every bruteforce hit a false positive — record the
+// wildcard IPs so the subdomain module can filter them out. Safe to call
+// more than once; probes accumulate.
+func (sc *ScanContext) DetectWildcard(ctx context.Context) {
+	found := 0
+	for i := 0; i < wildcardProbes; i++ {
+		buf := make([]byte, 8)
+		_, _ = rand.Read(buf)
+		host := hex.EncodeToString(buf) + "." + sc.Target
+
+		c, cancel := context.WithTimeout(ctx, sc.Opts.Timeout)
+		ips, err := sc.resolver.LookupIP(c, "ip", host)
+		cancel()
+		if err != nil || len(ips) == 0 {
+			continue
+		}
+		sc.mu.Lock()
+		for _, ip := range ips {
+			sc.wildcardIPs[ip.String()] = true
+		}
+		found = len(sc.wildcardIPs)
+		sc.mu.Unlock()
 	}
-	sc.mu.Lock()
-	for _, ip := range ips {
-		sc.wildcardIPs[ip.String()] = true
+	if found > 0 {
+		sc.Log(LevelWarn, "wildcard DNS detected (%d IPs) — bruteforce results filtered", found)
 	}
-	sc.mu.Unlock()
-	sc.Log(LevelWarn, "wildcard DNS detected (%d IPs) — bruteforce results filtered", len(ips))
 }
 
 // IsWildcardOnly reports whether every IP belongs to the wildcard set.

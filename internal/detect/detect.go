@@ -26,8 +26,10 @@ func Title(html string) string {
 		return ""
 	}
 	t := strings.Join(strings.Fields(strings.TrimSpace(m[1])), " ")
-	if len(t) > 120 {
-		t = t[:120]
+	// Slice by rune: a byte cut lands mid-codepoint on non-ASCII titles and
+	// puts invalid UTF-8 into the JSON/CSV report.
+	if r := []rune(t); len(r) > 120 {
+		t = string(r[:120])
 	}
 	return t
 }
