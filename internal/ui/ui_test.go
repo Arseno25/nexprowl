@@ -93,7 +93,7 @@ func TestRendererAndHumanOutput(t *testing.T) {
 		PrintSaved([]string{filepath.Join("results", "run", "report.html")})
 	})
 	for _, want := range []string{
-		"◉", "N E X P R O W L", "ATTACK SURFACE RECONNAISSANCE",
+		"ALL-IN-ONE DOMAIN RECONNAISSANCE", "dns·axfr·sub·ports·http·vhost·tls·takeover",
 		"[READY]", "[RUN]", "nexprowl [flags]",
 		"[STEP 01/02]", "[SUB]", "[PORT]", "[WEB]", "[RISK]", "[WARN]", "[DONE]",
 		"example.com", "[SAVED]",
@@ -117,8 +117,8 @@ func TestUIHelpers(t *testing.T) {
 	if orDash("") != "-" || orDash("x") != "x" || gradientString("") != "" {
 		t.Error("UI helper output is inconsistent")
 	}
-	if logo := scanLogo(); !strings.Contains(logo, "◉") || !strings.Contains(logo, "N E X P R O W L") ||
-		strings.Count(logo, "\n") != 6 {
+	if logo := scanLogo(); !strings.Contains(logo, "_   _") || !strings.Contains(logo, "____") ||
+		strings.Count(logo, "\n") != 5 {
 		t.Errorf("scan logo = %q", logo)
 	}
 	output := captureOutput(t, func() {

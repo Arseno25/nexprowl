@@ -18,7 +18,7 @@
 NexProwl is distributed as source. Clone it and build it locally with Go 1.24+:
 
 ```bash
-git clone https://github.com/Arseno25/dscan.git NexProwl
+git clone https://github.com/Arseno25/nexprowl.git NexProwl
 cd NexProwl
 ```
 
@@ -185,7 +185,7 @@ PRs welcome. New signatures and passive sources are the easiest place to start.
 ### Setup
 
 ```bash
-git clone https://github.com/Arseno25/dscan.git NexProwl
+git clone https://github.com/Arseno25/nexprowl.git NexProwl
 cd NexProwl
 go build ./...
 go test ./...
