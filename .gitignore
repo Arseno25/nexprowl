@@ -22,7 +22,7 @@ final_test.txt
 *_results.json
 *_test.json
 test_*.json
-axfr_test*
+axfr_test*.json
 batch_results*
 
 # ─── os junk ───
