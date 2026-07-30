@@ -22,6 +22,7 @@ copy bin\dscan-windows-amd64.exe dscan.exe
 # All output formats
 .\dscan.exe example.com -o out.json
 .\dscan.exe example.com -o out.md
+.\dscan.exe example.com -o out.html
 .\dscan.exe example.com -o out.csv
 .\dscan.exe example.com -o out.jsonl
 .\dscan.exe example.com -o out.txt
