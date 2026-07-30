@@ -1,0 +1,357 @@
+// Package report writes scan results in multiple structured formats.
+package report
+
+import (
+	"encoding/csv"
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"dscan/internal/scanner"
+)
+
+// Format is an output format identifier.
+type Format string
+
+const (
+	FormatJSON  Format = "json"
+	FormatJSONL Format = "jsonl"
+	FormatCSV   Format = "csv"
+	FormatMD    Format = "md"
+	FormatTXT   Format = "txt"
+)
+
+// InferFormat derives the format from a file extension.
+func InferFormat(path string) Format {
+	switch strings.ToLower(strings.TrimPrefix(filepath.Ext(path), ".")) {
+	case "jsonl", "ndjson":
+		return FormatJSONL
+	case "csv":
+		return FormatCSV
+	case "md", "markdown":
+		return FormatMD
+	case "txt":
+		return FormatTXT
+	default:
+		return FormatJSON
+	}
+}
+
+// Save decides file-vs-directory mode from the -o path:
+//   - path with extension (.json/.jsonl/.csv/.md/.txt) → one combined file
+//   - path without extension → directory: per-target files + summary.csv
+//
+// format overrides the extension when set.
+func Save(path string, format Format, results []*scanner.Result) ([]string, error) {
+	if path == "" {
+		return nil, nil
+	}
+	ext := filepath.Ext(path)
+	if ext != "" {
+		if format == "" {
+			format = InferFormat(path)
+		}
+		if err := writeCombined(path, format, results); err != nil {
+			return nil, err
+		}
+		return []string{path}, nil
+	}
+
+	// directory mode
+	if format == "" {
+		format = FormatJSON
+	}
+	if err := os.MkdirAll(path, 0755); err != nil {
+		return nil, err
+	}
+	var written []string
+	for _, r := range results {
+		name := sanitizeFileName(r.Target) + "." + string(format)
+		fp := filepath.Join(path, name)
+		if err := writeCombined(fp, format, []*scanner.Result{r}); err != nil {
+			return written, err
+		}
+		written = append(written, fp)
+	}
+	summary := filepath.Join(path, "summary.csv")
+	if err := writeCSV(summary, results); err != nil {
+		return written, err
+	}
+	written = append(written, summary)
+	return written, nil
+}
+
+func writeCombined(path string, format Format, results []*scanner.Result) error {
+	switch format {
+	case FormatJSONL:
+		return writeJSONL(path, results)
+	case FormatCSV:
+		return writeCSV(path, results)
+	case FormatMD:
+		return writeMarkdown(path, results)
+	case FormatTXT:
+		return writeText(path, results)
+	default:
+		return writeJSON(path, results)
+	}
+}
+
+// ─── JSON ─────────────────────────────────────────────────
+
+func writeJSON(path string, results []*scanner.Result) error {
+	var v any = results
+	if len(results) == 1 {
+		v = results[0]
+	}
+	data, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, append(data, '\n'), 0644)
+}
+
+func writeJSONL(path string, results []*scanner.Result) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	enc := json.NewEncoder(f)
+	for _, r := range results {
+		if err := enc.Encode(r); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ─── CSV ──────────────────────────────────────────────────
+
+func writeCSV(path string, results []*scanner.Result) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	w := csv.NewWriter(f)
+	defer w.Flush()
+
+	if err := w.Write([]string{
+		"target", "host", "ips", "cname", "status", "title",
+		"server", "technologies", "waf", "open_ports", "source",
+	}); err != nil {
+		return err
+	}
+
+	for _, r := range results {
+		var portList []string
+		for _, p := range r.Ports {
+			portList = append(portList, fmt.Sprint(p.Port))
+		}
+		webByHost := map[string]scanner.WebResult{}
+		for _, wr := range r.Web {
+			host := strings.TrimPrefix(strings.TrimPrefix(wr.URL, "https://"), "http://")
+			webByHost[host] = wr
+		}
+
+		writeRow := func(host string, ips []string, cname, source string) {
+			wr, live := webByHost[host]
+			row := []string{
+				r.Target, host, strings.Join(ips, "|"), cname,
+				"", "", "", "", "", strings.Join(portList, "|"), source,
+			}
+			if live {
+				row[4] = fmt.Sprint(wr.Status)
+				row[5] = wr.Title
+				row[6] = wr.Server
+				row[7] = strings.Join(wr.Technologies, "|")
+				row[8] = wr.WAF
+			}
+			_ = w.Write(row)
+		}
+
+		writeRow(r.Target, r.IPs, "", "main")
+		for _, sub := range r.Subdomains {
+			writeRow(sub.Host, sub.IPs, sub.CNAME, sub.Source)
+		}
+	}
+	return w.Error()
+}
+
+// ─── Markdown ─────────────────────────────────────────────
+
+func writeMarkdown(path string, results []*scanner.Result) error {
+	var b strings.Builder
+	b.WriteString("# dscan recon report\n\n")
+
+	totalSubs, totalPorts, totalLive, totalTakeovers := 0, 0, 0, 0
+	for _, r := range results {
+		totalSubs += len(r.Subdomains)
+		totalPorts += len(r.Ports)
+		totalLive += len(r.Web)
+		totalTakeovers += len(r.Takeovers)
+	}
+	fmt.Fprintf(&b, "| targets | subdomains | open ports | live web | takeover candidates |\n")
+	fmt.Fprintf(&b, "|---|---|---|---|---|\n")
+	fmt.Fprintf(&b, "| %d | %d | %d | %d | %d |\n\n",
+		len(results), totalSubs, totalPorts, totalLive, totalTakeovers)
+
+	for _, r := range results {
+		fmt.Fprintf(&b, "\n## `%s`\n\n", r.Target)
+		fmt.Fprintf(&b, "- **IPs:** %s\n", orDash(strings.Join(r.IPs, ", ")))
+		fmt.Fprintf(&b, "- **Duration:** %d ms\n", r.DurationMs)
+		if r.Error != "" {
+			fmt.Fprintf(&b, "- **Errors:** %s\n", r.Error)
+		}
+
+		if r.DNS != nil {
+			b.WriteString("\n### DNS\n\n")
+			b.WriteString("| record | values |\n|---|---|\n")
+			writeDNSRow := func(name string, vals []string) {
+				if len(vals) > 0 {
+					fmt.Fprintf(&b, "| %s | %s |\n", name, strings.Join(vals, ", "))
+				}
+			}
+			writeDNSRow("A", r.DNS.A)
+			writeDNSRow("AAAA", r.DNS.AAAA)
+			writeDNSRow("MX", r.DNS.MX)
+			writeDNSRow("NS", r.DNS.NS)
+			if r.DNS.CNAME != "" {
+				fmt.Fprintf(&b, "| CNAME | %s |\n", r.DNS.CNAME)
+			}
+		}
+
+		if len(r.ZoneTransfer) > 0 {
+			b.WriteString("\n### ⚠️ Zone transfer (AXFR)\n\n")
+			for _, z := range r.ZoneTransfer {
+				fmt.Fprintf(&b, "**%s** — %d records:\n\n```\n", z.Server, len(z.Records))
+				for _, rec := range z.Records {
+					b.WriteString(rec + "\n")
+				}
+				b.WriteString("```\n")
+			}
+		}
+
+		if len(r.VHosts) > 0 {
+			b.WriteString("\n### Virtual hosts\n\n")
+			b.WriteString("| host | status | size | title |\n|---|---|---|---|\n")
+			for _, v := range r.VHosts {
+				fmt.Fprintf(&b, "| %s | %d | %d | %s |\n", v.Host, v.Status, v.Size, v.Title)
+			}
+		}
+
+		if len(r.Ports) > 0 {
+			b.WriteString("\n### Open ports\n\n")
+			b.WriteString("| port | service | banner |\n|---|---|---|\n")
+			for _, p := range r.Ports {
+				fmt.Fprintf(&b, "| %d | %s | %s |\n", p.Port, p.Service, p.Banner)
+			}
+		}
+
+		if len(r.Web) > 0 {
+			b.WriteString("\n### Live web services\n\n")
+			b.WriteString("| url | status | title | server | tech | waf |\n|---|---|---|---|---|---|\n")
+			for _, w := range r.Web {
+				fmt.Fprintf(&b, "| %s | %d | %s | %s | %s | %s |\n",
+					w.URL, w.Status, w.Title, w.Server,
+					strings.Join(w.Technologies, ", "), w.WAF)
+			}
+		}
+
+		if len(r.Subdomains) > 0 {
+			b.WriteString("\n### Subdomains\n\n")
+			b.WriteString("| host | ips | cname | source |\n|---|---|---|---|\n")
+			for _, s := range r.Subdomains {
+				fmt.Fprintf(&b, "| %s | %s | %s | %s |\n",
+					s.Host, strings.Join(s.IPs, ", "), s.CNAME, s.Source)
+			}
+		}
+
+		if r.TLS != nil {
+			b.WriteString("\n### TLS\n\n")
+			fmt.Fprintf(&b, "- **Version:** %s (%s)\n", r.TLS.Version, r.TLS.Cipher)
+			fmt.Fprintf(&b, "- **Issuer:** %s\n", r.TLS.Issuer)
+			exp := ""
+			if r.TLS.Expired {
+				exp = " — **EXPIRED**"
+			}
+			fmt.Fprintf(&b, "- **Validity:** %s → %s%s\n", r.TLS.ValidFrom, r.TLS.ValidTo, exp)
+		}
+
+		if len(r.Takeovers) > 0 {
+			b.WriteString("\n### ⚠️ Takeover candidates\n\n")
+			b.WriteString("| host | cname | service |\n|---|---|---|\n")
+			for _, t := range r.Takeovers {
+				fmt.Fprintf(&b, "| %s | %s | %s |\n", t.Host, t.CNAME, t.Service)
+			}
+		}
+	}
+
+	return os.WriteFile(path, []byte(b.String()), 0644)
+}
+
+// ─── Plain text ───────────────────────────────────────────
+
+func writeText(path string, results []*scanner.Result) error {
+	var b strings.Builder
+	for _, r := range results {
+		fmt.Fprintf(&b, "═══ %s (%d ms)\n", r.Target, r.DurationMs)
+		fmt.Fprintf(&b, "  ips:        %s\n", orDash(strings.Join(r.IPs, ", ")))
+		fmt.Fprintf(&b, "  subdomains: %d\n", len(r.Subdomains))
+		var ps []string
+		for _, p := range r.Ports {
+			ps = append(ps, fmt.Sprint(p.Port))
+		}
+		fmt.Fprintf(&b, "  open ports: %s\n", orDash(strings.Join(ps, ",")))
+		fmt.Fprintf(&b, "  live web:   %d\n", len(r.Web))
+		if len(r.Web) > 0 {
+			w := r.Web[0]
+			fmt.Fprintf(&b, "  main site:  %d %q [%s]\n", w.Status, w.Title, strings.Join(w.Technologies, ", "))
+			if w.WAF != "" {
+				fmt.Fprintf(&b, "  waf:        %s\n", w.WAF)
+			}
+		}
+		if r.TLS != nil {
+			exp := ""
+			if r.TLS.Expired {
+				exp = " EXPIRED"
+			}
+			fmt.Fprintf(&b, "  tls:        %s, valid to %s%s\n", r.TLS.Version, r.TLS.ValidTo, exp)
+		}
+		for _, z := range r.ZoneTransfer {
+			fmt.Fprintf(&b, "  axfr:       %s — %d records dumped!\n", z.Server, len(z.Records))
+		}
+		for _, v := range r.VHosts {
+			fmt.Fprintf(&b, "  vhost:      %s → %d (%db) %s\n", v.Host, v.Status, v.Size, v.Title)
+		}
+		for _, t := range r.Takeovers {
+			fmt.Fprintf(&b, "  takeover?:  %s → %s (%s)\n", t.Host, t.CNAME, t.Service)
+		}
+		b.WriteString("\n")
+	}
+	return os.WriteFile(path, []byte(b.String()), 0644)
+}
+
+// ─── helpers ──────────────────────────────────────────────
+
+func sanitizeFileName(s string) string {
+	return strings.Map(func(r rune) rune {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9',
+			r == '.', r == '-', r == '_':
+			return r
+		default:
+			return '_'
+		}
+	}, s)
+}
+
+func orDash(s string) string {
+	if s == "" {
+		return "-"
+	}
+	return s
+}

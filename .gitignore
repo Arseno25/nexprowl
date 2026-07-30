@@ -1,0 +1,35 @@
+# ─── build artifacts ───
+bin/
+dscan.exe
+dscan
+dscan-*
+*.test
+*.out
+*~
+
+# ─── scan outputs ───
+results/
+out/
+output/
+scan_output/
+*.log
+
+# ─── local test artifacts (jangan di-push) ───
+targets.txt
+resolvers.txt
+test_targets.txt
+final_test.txt
+*_results.json
+*_test.json
+test_*.json
+axfr_test*
+batch_results*
+
+# ─── os junk ───
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# ─── editor ───
+.vscode/
+.idea/
