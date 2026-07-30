@@ -1,8 +1,5 @@
 # ─── build artifacts ───
 bin/
-dscan.exe
-dscan
-dscan-*
 nexprowl.exe
 nexprowl
 nexprowl-*

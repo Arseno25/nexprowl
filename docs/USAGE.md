@@ -8,7 +8,7 @@ repository. Go 1.24 or newer is required.
 ## Clone
 
 ```bash
-git clone https://github.com/Arseno25/dscan.git NexProwl
+git clone https://github.com/Arseno25/nexprowl.git NexProwl
 cd NexProwl
 ```
 
