@@ -32,17 +32,27 @@ func gradientString(s string) string {
 	return b.String()
 }
 
-// Banner renders the minimal NexProwl banner.
+// Banner renders the NexProwl banner with a thick double-line frame.
 func Banner() {
-	pterm.DefaultCenter.Println(dim.Sprint("┌──────────────────────────────────────────┐"))
+	const W = 60
 
-	line := dim.Sprint("│            ") +
+	top := dim.Sprint("╔═[ ") + gradientString("NexProwl") +
+		dim.Sprint(" ]"+strings.Repeat("═", W-15)+"╗")
+	pterm.DefaultCenter.Println(top)
+
+	line1 := dim.Sprint("║  ") +
 		accent.Sprint(">_") + " " +
-		gradientString("N E X P R O W L") +
-		dim.Sprint("             │")
-	pterm.DefaultCenter.Println(line)
+		gradientString("ALL-IN-ONE DOMAIN RECONNAISSANCE") +
+		dim.Sprint(strings.Repeat(" ", 21)+"║")
+	pterm.DefaultCenter.Println(line1)
 
-	pterm.DefaultCenter.Println(dim.Sprint("└──────────────────────────────────────────┘"))
+	line2 := dim.Sprint("║  ") +
+		dim.Sprint("dns·axfr·sub·ports·http·vhost·tls·takeover") +
+		dim.Sprint(strings.Repeat(" ", 14)+"║")
+	pterm.DefaultCenter.Println(line2)
+
+	pterm.DefaultCenter.Println(
+		dim.Sprint("╚" + strings.Repeat("═", W-2) + "╝"))
 }
 
 // Boot confirms readiness without adding artificial startup delay.
