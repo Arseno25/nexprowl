@@ -20,6 +20,7 @@ const (
 	FormatJSONL Format = "jsonl"
 	FormatCSV   Format = "csv"
 	FormatMD    Format = "md"
+	FormatHTML  Format = "html"
 	FormatTXT   Format = "txt"
 )
 
@@ -32,6 +33,8 @@ func InferFormat(path string) Format {
 		return FormatCSV
 	case "md", "markdown":
 		return FormatMD
+	case "html", "htm":
+		return FormatHTML
 	case "txt":
 		return FormatTXT
 	default:
@@ -40,7 +43,7 @@ func InferFormat(path string) Format {
 }
 
 // Save decides file-vs-directory mode from the -o path:
-//   - path with extension (.json/.jsonl/.csv/.md/.txt) → one combined file
+//   - path with extension (.json/.jsonl/.csv/.md/.html/.txt) → one combined file
 //   - path without extension → directory: per-target files + summary.csv
 //
 // format overrides the extension when set.
@@ -91,6 +94,8 @@ func writeCombined(path string, format Format, results []*scanner.Result) error 
 		return writeCSV(path, results)
 	case FormatMD:
 		return writeMarkdown(path, results)
+	case FormatHTML:
+		return writeHTML(path, results)
 	case FormatTXT:
 		return writeText(path, results)
 	default:

@@ -59,7 +59,7 @@ chmod +x bin/dscan-darwin-arm64   # Apple Silicon
 | `tls` | TLS version · cipher · issuer · **expired-cert flagging** · SANs extraction |
 | `takeover` | Dangling CNAME detection · 48 claimable-service fingerprints · NXDOMAIN **+ unclaimed-page body verification** (catches GitHub Pages / Shopify / Heroku, which keep resolving) |
 
-Extras: **custom DNS resolvers** (`-r`, round-robin) · **per-target rate limiting** (`-rate`) · JSON/JSONL/CSV/Markdown/TXT output · modern animated UI · concurrent multi-target batch mode.
+Extras: **custom DNS resolvers** (`-r`, round-robin) · **per-target rate limiting** (`-rate`) · JSON/JSONL/CSV/Markdown/HTML/TXT output · modern animated UI · concurrent multi-target batch mode.
 
 ## Usage
 
@@ -123,10 +123,11 @@ https://sub.domain.com/path   ← normalized to sub.domain.com
 | `out.jsonl` | JSONL — one result per line, pipe-ready for `jq`/`nuclei` |
 | `out.csv` | Flattened CSV (target, host, status, tech, waf, ports) |
 | `out.md` | Markdown report with per-target tables |
+| `out.html` | Responsive standalone HTML report |
 | `out.txt` | Plain-text summary |
 | `results/` | **Directory mode**: `results/<target>.json` + `summary.csv` |
 
-Format override: `-format json|jsonl|csv|md|txt`.
+Format override: `-format json|jsonl|csv|md|html|txt`.
 
 ## Flag Reference
 
@@ -183,7 +184,7 @@ internal/scanner/        Module interface, engine, event system, rate limiter
 internal/modules/        the seven scan modules
 internal/detect/         signature databases (tech, WAF, CDN, takeover)
 internal/data/           embedded wordlist + port specs
-internal/report/         JSON/JSONL/CSV/Markdown/TXT writers
+internal/report/         JSON/JSONL/CSV/Markdown/HTML/TXT writers
 internal/ui/             terminal renderer
 ```
 
