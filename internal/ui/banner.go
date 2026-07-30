@@ -2,14 +2,9 @@ package ui
 
 import (
 	"fmt"
-	"runtime"
 	"strings"
 
 	"github.com/pterm/pterm"
-	"github.com/pterm/pterm/putils"
-
-	"nexprowl/internal/detect"
-	"nexprowl/internal/scanner"
 )
 
 var (
@@ -37,26 +32,27 @@ func gradientString(s string) string {
 	return b.String()
 }
 
-// Banner renders the gradient ASCII banner + metadata line.
+func scanLogo() string {
+	return strings.Join([]string{
+		` _   _           ____                    _ `,
+		`| \ | | _____  _|  _ \ _ __ _____      _| |`,
+		`|  \| |/ _ \ \/ / |_) | '__/ _ \ \ /\ / / |`,
+		`| |\  |  __/>  <|  __/| | | (_) \ V  V /| |`,
+		`|_| \_|\___/_/\_\_|   |_|  \___/ \_/\_/ |_|`,
+		``,
+	}, "\n")
+}
+
+// Banner prints the figlet banner + tagline + modules.
 func Banner() {
-	word := "NEXPROWL"
-	letters := make([]pterm.Letters, 0, len(word))
-	n := float32(len(word))
-	for i, ch := range word {
-		rgb := gradStart.Fade(0, n, float32(i), gradEnd)
-		letters = append(letters, putils.LettersFromStringWithRGB(string(ch), rgb))
-	}
-	big, _ := pterm.DefaultBigText.WithLetters(letters...).Srender()
-	pterm.DefaultCenter.Println(big)
+	pterm.DefaultCenter.Println(gradientString(scanLogo()))
 
-	pterm.DefaultCenter.Println(gradientString("a l l - i n - o n e   d o m a i n   r e c o n n a i s s a n c e"))
-	pterm.Println()
+	line := accent.Sprint(">_") + "  " +
+		gradientString("ALL-IN-ONE DOMAIN RECONNAISSANCE")
+	pterm.DefaultCenter.Println(line)
 
-	tech, waf, takeover := detect.SignatureCounts()
-	meta := fmt.Sprintf("v%s by shadow0x0  ·  %s/%s  ·  %d tech sigs  ·  %d waf sigs  ·  %d takeover fingerprints",
-		scanner.Version, runtime.GOOS, runtime.GOARCH, tech, waf, takeover)
-	pterm.DefaultCenter.Println(dim.Sprint(meta))
-	pterm.DefaultCenter.Println(dim.Sprint(strings.Repeat("─", 64)))
+	pterm.DefaultCenter.Println(
+		dim.Sprint("dns·axfr·sub·ports·http·vhost·tls·takeover"))
 }
 
 // Boot confirms readiness without adding artificial startup delay.

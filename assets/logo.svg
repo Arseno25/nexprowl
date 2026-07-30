@@ -8,52 +8,89 @@
       <stop offset="0%" stop-color="#00E5FF"/>
       <stop offset="100%" stop-color="#D500F9"/>
     </linearGradient>
-    <linearGradient id="sweep" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#00E5FF" stop-opacity="0.55"/>
-      <stop offset="100%" stop-color="#00E5FF" stop-opacity="0"/>
-    </linearGradient>
-    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#00E5FF" stop-opacity="0.16"/>
+    <radialGradient id="radarBg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#060E1A"/>
+      <stop offset="70%" stop-color="#0B1525"/>
+      <stop offset="100%" stop-color="#0D1F3C"/>
+    </radialGradient>
+    <radialGradient id="radarGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#00E5FF" stop-opacity="0.08"/>
       <stop offset="100%" stop-color="#00E5FF" stop-opacity="0"/>
     </radialGradient>
-    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+    <pattern id="scanlines" width="3" height="3" patternUnits="userSpaceOnUse">
+      <rect width="3" height="1" fill="#1A3A5C" opacity="0.10"/>
+    </pattern>
+    <pattern id="bgGrid" width="40" height="40" patternUnits="userSpaceOnUse">
       <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#141B2E" stroke-width="1"/>
     </pattern>
+    <linearGradient id="sweepGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00E5FF" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#00E5FF" stop-opacity="0"/>
+    </linearGradient>
   </defs>
 
   <!-- background -->
   <rect x="0" y="0" width="880" height="300" rx="24" fill="#0B0F1A"/>
-  <rect x="0" y="0" width="880" height="300" rx="24" fill="url(#grid)"/>
+  <rect x="0" y="0" width="880" height="300" rx="24" fill="url(#bgGrid)"/>
   <rect x="1.5" y="1.5" width="877" height="297" rx="22.5" fill="none" stroke="url(#grad)" stroke-opacity="0.35" stroke-width="1.5"/>
 
-  <!-- glow behind radar -->
-  <circle cx="170" cy="140" r="130" fill="url(#glow)"/>
+  <!-- ambient glow behind radar -->
+  <circle cx="170" cy="140" r="140" fill="url(#radarGlow)"/>
 
-  <!-- radar / recon emblem -->
+  <!-- scanner / radar face -->
   <g transform="translate(170,140)">
+    <!-- dark background -->
+    <circle r="102" fill="url(#radarBg)"/>
+
+    <!-- scanline overlay -->
+    <circle r="102" fill="url(#scanlines)"/>
+
+    <!-- grid lines — 45° radial -->
+    <g stroke="#15223D" stroke-width="1">
+      <line x1="-100" y1="0" x2="100" y2="0"/>
+      <line x1="0" y1="-100" x2="0" y2="100"/>
+      <line x1="-71" y1="-71" x2="71" y2="71"/>
+      <line x1="71" y1="-71" x2="-71" y2="71"/>
+    </g>
+
+    <!-- concentric rings -->
     <circle r="102" fill="none" stroke="url(#grad)" stroke-width="3"/>
-    <circle r="72" fill="none" stroke="#223052" stroke-width="2"/>
-    <circle r="42" fill="none" stroke="#223052" stroke-width="2"/>
+    <circle r="75" fill="none" stroke="#1E2E50" stroke-width="1.5"/>
+    <circle r="48" fill="none" stroke="#1E2E50" stroke-width="1.5"/>
+    <circle r="21" fill="none" stroke="#1E2E50" stroke-width="1.5"/>
 
-    <!-- crosshair ticks — centered on r=102 -->
-    <line x1="0" y1="-115" x2="0" y2="-89" stroke="url(#grad)" stroke-width="3"/>
-    <line x1="0" y1="89" x2="0" y2="115" stroke="url(#grad)" stroke-width="3"/>
-    <line x1="-115" y1="0" x2="-89" y2="0" stroke="url(#grad)" stroke-width="3"/>
-    <line x1="89" y1="0" x2="115" y2="0" stroke="url(#grad)" stroke-width="3"/>
+    <!-- crosshair ticks — crossing r=102 -->
+    <line x1="0" y1="-116" x2="0" y2="-88" stroke="url(#grad)" stroke-width="3"/>
+    <line x1="0" y1="88" x2="0" y2="116" stroke="url(#grad)" stroke-width="3"/>
+    <line x1="-116" y1="0" x2="-88" y2="0" stroke="url(#grad)" stroke-width="3"/>
+    <line x1="88" y1="0" x2="116" y2="0" stroke="url(#grad)" stroke-width="3"/>
 
-    <!-- radar sweep -->
-    <path d="M0 0 L102 0 A102 102 0 0 0 51 -88.5 Z" fill="url(#sweep)"/>
+    <!-- sweep beam — 45° wedge -->
+    <path d="M0 0 L102 0 A102 102 0 0 0 72 -72 Z" fill="url(#sweepGrad)"/>
+    <line x1="0" y1="0" x2="72" y2="-72" stroke="#00E5FF" stroke-width="8" stroke-linecap="round" opacity="0.15"/>
     <line x1="0" y1="0" x2="72" y2="-72" stroke="#00E5FF" stroke-width="3" stroke-linecap="round"/>
 
-    <!-- detected blips -->
-    <circle cx="38" cy="-24" r="5.5" fill="#00E5FF"/>
-    <circle cx="38" cy="-24" r="10" fill="none" stroke="#00E5FF" stroke-opacity="0.4" stroke-width="1.5"/>
-    <circle cx="-52" cy="34" r="4.5" fill="#D500F9"/>
-    <circle cx="-14" cy="62" r="3.5" fill="#69F0AE"/>
+    <!-- detected blip — strong signal -->
+    <circle cx="28" cy="-18" r="5.5" fill="#00E5FF"/>
+    <circle cx="28" cy="-18" r="11" fill="none" stroke="#00E5FF" stroke-width="1.5" opacity="0.5"/>
+    <circle cx="28" cy="-18" r="17" fill="none" stroke="#00E5FF" stroke-width="1" opacity="0.2"/>
+
+    <!-- detected blip — magenta, medium -->
+    <circle cx="-50" cy="32" r="4.5" fill="#D500F9"/>
+    <circle cx="-50" cy="32" r="9" fill="none" stroke="#D500F9" stroke-width="1.5" opacity="0.45"/>
+
+    <!-- detected blip — green, far range -->
+    <circle cx="-12" cy="66" r="3.5" fill="#69F0AE"/>
+    <circle cx="-12" cy="66" r="7" fill="none" stroke="#69F0AE" stroke-width="1" opacity="0.35"/>
+
+    <!-- detected blip — amber, edge -->
+    <circle cx="72" cy="-34" r="3" fill="#FFD740"/>
+    <circle cx="72" cy="-34" r="6" fill="none" stroke="#FFD740" stroke-width="1" opacity="0.3"/>
 
     <!-- center node -->
-    <circle r="7" fill="url(#grad)"/>
-    <circle r="13" fill="none" stroke="url(#grad)" stroke-width="1.5" stroke-opacity="0.6"/>
+    <circle r="6" fill="url(#grad)"/>
+    <circle r="12" fill="none" stroke="url(#grad)" stroke-width="1.5" opacity="0.55"/>
+    <circle r="20" fill="none" stroke="url(#grad)" stroke-width="1" opacity="0.2"/>
   </g>
 
   <!-- wordmark -->
