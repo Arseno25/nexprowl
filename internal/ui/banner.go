@@ -32,27 +32,27 @@ func gradientString(s string) string {
 	return b.String()
 }
 
-// Banner renders the NexProwl banner with a thick double-line frame.
+func scanLogo() string {
+	return strings.Join([]string{
+		` _   _           ____                    _ `,
+		`| \ | | _____  _|  _ \ _ __ _____      _| |`,
+		`|  \| |/ _ \ \/ / |_) | '__/ _ \ \ /\ / / |`,
+		`| |\  |  __/>  <|  __/| | | (_) \ V  V /| |`,
+		`|_| \_|\___/_/\_\_|   |_|  \___/ \_/\_/ |_|`,
+		``,
+	}, "\n")
+}
+
+// Banner prints the figlet banner + tagline + modules.
 func Banner() {
-	const W = 60
+	pterm.DefaultCenter.Println(gradientString(scanLogo()))
 
-	top := dim.Sprint("╔═[ ") + gradientString("NexProwl") +
-		dim.Sprint(" ]"+strings.Repeat("═", W-15)+"╗")
-	pterm.DefaultCenter.Println(top)
-
-	line1 := dim.Sprint("║  ") +
-		accent.Sprint(">_") + " " +
-		gradientString("ALL-IN-ONE DOMAIN RECONNAISSANCE") +
-		dim.Sprint(strings.Repeat(" ", 21)+"║")
-	pterm.DefaultCenter.Println(line1)
-
-	line2 := dim.Sprint("║  ") +
-		dim.Sprint("dns·axfr·sub·ports·http·vhost·tls·takeover") +
-		dim.Sprint(strings.Repeat(" ", 14)+"║")
-	pterm.DefaultCenter.Println(line2)
+	line := accent.Sprint(">_") + "  " +
+		gradientString("ALL-IN-ONE DOMAIN RECONNAISSANCE")
+	pterm.DefaultCenter.Println(line)
 
 	pterm.DefaultCenter.Println(
-		dim.Sprint("╚" + strings.Repeat("═", W-2) + "╝"))
+		dim.Sprint("dns·axfr·sub·ports·http·vhost·tls·takeover"))
 }
 
 // Boot confirms readiness without adding artificial startup delay.
