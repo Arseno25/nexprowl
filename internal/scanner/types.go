@@ -16,8 +16,8 @@ type Options struct {
 	Wordlist    []string
 	PassiveOnly bool
 	ProbeSubs   bool
-	Resolvers   []string        // custom DNS servers (host:port); empty = system
-	Rate        int             // max network ops/sec per target; 0 = unlimited
+	Resolvers   []string // custom DNS servers (host:port); empty = system
+	Rate        int      // max network ops/sec per target; 0 = unlimited
 }
 
 // HasModule reports whether a module is enabled.

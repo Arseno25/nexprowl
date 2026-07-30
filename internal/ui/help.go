@@ -73,7 +73,7 @@ func PrintHelp() {
 
 func section(title string) {
 	pterm.Println()
-	pterm.Println(pterm.NewRGB(0, 229, 255).Sprint("  "+title))
+	pterm.Println(pterm.NewRGB(0, 229, 255).Sprint("  " + title))
 }
 
 func row(flag, desc string) {

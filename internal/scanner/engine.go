@@ -39,10 +39,18 @@ func (e *Engine) Run(ctx context.Context, targets []string) []*Result {
 	var wg sync.WaitGroup
 
 	for i, target := range targets {
+		// Take the slot before spawning: otherwise a large -l list parks one
+		// goroutine per target waiting on the semaphore.
+		select {
+		case sem <- struct{}{}:
+		case <-ctx.Done():
+			results[i] = &Result{Target: target, Error: "cancelled"}
+			continue
+		}
+
 		wg.Add(1)
 		go func(i int, target string) {
 			defer wg.Done()
-			sem <- struct{}{}
 			defer func() { <-sem }()
 
 			if ctx.Err() != nil {
@@ -101,11 +109,4 @@ func UniqueSorted(in []string) []string {
 	}
 	sort.Strings(out)
 	return out
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }

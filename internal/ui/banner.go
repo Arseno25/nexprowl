@@ -91,6 +91,6 @@ func ConfigLine(targets int, modules string, workers, concurrency, timeoutSec, r
 	}
 	line := fmt.Sprintf(" targets %d · modules %s · workers %d · concurrency %d · timeout %ds · rate %s · dns %s",
 		targets, modules, workers, concurrency, timeoutSec, rateStr, resStr)
-	pterm.Println(dim.Sprint(" ┌ ")+gradientString(line))
+	pterm.Println(dim.Sprint(" ┌ ") + gradientString(line))
 	pterm.Println()
 }
