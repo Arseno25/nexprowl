@@ -89,10 +89,6 @@ func main() {
 		}
 		if !cfg.Silent {
 			ui.PrintSaved(files)
-		} else {
-			for _, f := range files {
-				fmt.Println("saved:", f)
-			}
 		}
 	}
 }

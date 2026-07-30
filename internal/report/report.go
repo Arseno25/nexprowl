@@ -56,6 +56,11 @@ func Save(path string, format Format, results []*scanner.Result) ([]string, erro
 		if format == "" {
 			format = InferFormat(path)
 		}
+		if dir := filepath.Dir(path); dir != "." {
+			if err := os.MkdirAll(dir, 0755); err != nil {
+				return nil, err
+			}
+		}
 		if err := writeCombined(path, format, results); err != nil {
 			return nil, err
 		}

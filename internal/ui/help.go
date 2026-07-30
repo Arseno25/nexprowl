@@ -47,7 +47,7 @@ func PrintHelp() {
 	row("-rate N", "max network ops/sec per target (default: unlimited)")
 
 	section("OUTPUT")
-	row("-o PATH", "file (.json/.jsonl/.csv/.md/.html/.txt) or directory")
+	row("-o PATH", "output file or directory (default: results/)")
 	row("-format FMT", "override format: json | jsonl | csv | md | html | txt")
 	row("-silent", "no UI — one summary line per target (script-friendly)")
 	row("-no-color", "disable colored output")
@@ -59,15 +59,15 @@ func PrintHelp() {
 	section("EXAMPLES")
 	examples([][2]string{
 		{"dscan example.com", "full scan, single target"},
-		{"dscan -l targets.txt -T 10 -o results/", "batch 10 concurrent → per-target files + summary.csv"},
+		{"dscan -l targets.txt -T 10", "batch 10 concurrent → results/"},
 		{"dscan example.com -m sub,http -t 500", "subdomains + http only, 500 workers"},
 		{"dscan example.com -p 1-10000 -t 1000", "wide port scan"},
 		{"dscan example.com -m dns", "dns records + zone transfer attempt"},
 		{"dscan example.com -m dns,vhost", "hunt hidden virtual hosts"},
 		{"dscan example.com -r resolvers.txt -rate 50", "stealth: custom resolvers + rate limit"},
-		{"dscan -l targets.txt -passive -silent -o subs.jsonl", "passive, pipe-ready for jq/nuclei"},
-		{"dscan -l targets.txt -o report.md", "markdown report for bug bounty notes"},
-		{"dscan example.com -o report.html", "standalone HTML report"},
+		{"dscan -l targets.txt -passive -silent -o results/subs.jsonl", "passive, pipe-ready for jq/nuclei"},
+		{"dscan -l targets.txt -o results/report.md", "markdown report for bug bounty notes"},
+		{"dscan example.com -o results/report.html", "standalone HTML report"},
 	})
 	pterm.Println()
 }

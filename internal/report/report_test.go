@@ -36,3 +36,13 @@ func TestWriteHTML(t *testing.T) {
 		t.Error("target was not HTML-escaped")
 	}
 }
+
+func TestSaveCreatesParentDirectory(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "results", "report.html")
+	if _, err := Save(path, "", []*scanner.Result{{Target: "example.com"}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("saved report: %v", err)
+	}
+}

@@ -16,23 +16,23 @@
 copy bin\dscan-windows-amd64.exe dscan.exe
 .\dscan.exe example.com
 
-# Batch + structured output
-.\dscan.exe -l targets.txt -T 10 -o results\
+# Batch + structured output (results\ is the default)
+.\dscan.exe -l targets.txt -T 10
 
 # All output formats
-.\dscan.exe example.com -o out.json
-.\dscan.exe example.com -o out.md
-.\dscan.exe example.com -o out.html
-.\dscan.exe example.com -o out.csv
-.\dscan.exe example.com -o out.jsonl
-.\dscan.exe example.com -o out.txt
+.\dscan.exe example.com -o results\out.json
+.\dscan.exe example.com -o results\out.md
+.\dscan.exe example.com -o results\out.html
+.\dscan.exe example.com -o results\out.csv
+.\dscan.exe example.com -o results\out.jsonl
+.\dscan.exe example.com -o results\out.txt
 ```
 
 ### CMD
 
 ```cmd
 bin\dscan-windows-amd64.exe example.com
-bin\dscan-windows-amd64.exe -l targets.txt -T 10 -o results\
+bin\dscan-windows-amd64.exe -l targets.txt -T 10
 ```
 
 ---
@@ -52,8 +52,8 @@ dscan example.com
 nohup dscan -l targets.txt -T 10 -o results/ > scan.log 2>&1 &
 
 # Pipe JSONL into jq
-dscan -l targets.txt -passive -silent -o subs.jsonl
-cat subs.jsonl | jq -r '.subdomains[].host' | sort -u
+dscan -l targets.txt -passive -silent -o results/subs.jsonl
+cat results/subs.jsonl | jq -r '.subdomains[].host' | sort -u
 ```
 
 ---
@@ -86,16 +86,16 @@ dscan example.com
 dscan --help
 
 # 1. Passive bug bounty recon (no direct target contact)
-dscan -l scope.txt -m dns,sub -passive -silent -o subs.jsonl
+dscan -l scope.txt -m dns,sub -passive -silent -o results/subs.jsonl
 
 # 2. Full recon on a single target + report
-dscan target.com -o report.md
+dscan target.com -o results/report.md
 
 # 3. Stealth scan (avoid WAF/IDS)
 dscan target.com -r resolvers.txt -rate 30 -timeout 6
 
 # 4. Subdomain takeover hunting
-dscan -l targets.txt -m sub,takeover -T 10 -o takeover.md
+dscan -l targets.txt -m sub,takeover -T 10 -o results/takeover.md
 
 # 5. Zone transfer check
 dscan target.com -m dns -silent

@@ -74,7 +74,7 @@ func Load() (*Config, error) {
 		rate        = flag.Int("rate", 0, "max network ops/sec per target (0 = unlimited)")
 		passive     = flag.Bool("passive", false, "passive subdomains only (skip bruteforce)")
 		probeSubs   = flag.Bool("probe-subs", true, "HTTP-probe discovered subdomains")
-		output      = flag.String("o", "", "output path: file (.json/.jsonl/.csv/.md/.html/.txt) or directory")
+		output      = flag.String("o", "results", "output path: file (.json/.jsonl/.csv/.md/.html/.txt) or directory")
 		format      = flag.String("format", "", "output format override: json|jsonl|csv|md|html|txt")
 		silent      = flag.Bool("silent", false, "no UI; one summary line per target")
 		noColor     = flag.Bool("no-color", false, "disable colors")
@@ -225,7 +225,7 @@ func usage() {
 
   Usage:
     dscan [flags] example.com
-    dscan -l targets.txt -T 10 -o results/
+    dscan -l targets.txt -T 10
 
   Run 'dscan --help' for the full flag reference and examples.
 `)

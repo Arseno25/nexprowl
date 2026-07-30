@@ -70,8 +70,8 @@ dscan --help
 # Full scan, single target (all modules + animated UI)
 dscan example.com
 
-# Batch — 10 concurrent targets, per-target files + summary.csv
-dscan -l targets.txt -T 10 -o results/
+# Batch — 10 concurrent targets, automatically saved to results/
+dscan -l targets.txt -T 10
 
 # Subdomains + HTTP only, 500 workers
 dscan example.com -m sub,http -t 500
@@ -89,10 +89,10 @@ dscan example.com -m dns,vhost
 dscan example.com -r resolvers.txt -rate 50
 
 # Passive only, pipe-ready for jq/nuclei
-dscan -l targets.txt -passive -silent -o subs.jsonl
+dscan -l targets.txt -passive -silent -o results/subs.jsonl
 
 # Markdown report for bug bounty notes
-dscan -l targets.txt -o report.md
+dscan -l targets.txt -o results/report.md
 ```
 
 ### `targets.txt` format
@@ -115,16 +115,17 @@ https://sub.domain.com/path   ← normalized to sub.domain.com
 
 ## Output
 
-`-o` auto-detects the mode from the path:
+Every scan is saved to `results/` by default. Use `-o` to choose another
+file or directory; missing parent directories are created automatically.
 
 | Path | Result |
 |------|--------|
-| `out.json` | Combined pretty JSON |
-| `out.jsonl` | JSONL — one result per line, pipe-ready for `jq`/`nuclei` |
-| `out.csv` | Flattened CSV (target, host, status, tech, waf, ports) |
-| `out.md` | Markdown report with per-target tables |
-| `out.html` | Responsive standalone HTML report |
-| `out.txt` | Plain-text summary |
+| `results/out.json` | Combined pretty JSON |
+| `results/out.jsonl` | JSONL — one result per line, pipe-ready for `jq`/`nuclei` |
+| `results/out.csv` | Flattened CSV (target, host, status, tech, waf, ports) |
+| `results/out.md` | Markdown report with per-target tables |
+| `results/out.html` | Responsive standalone HTML report |
+| `results/out.txt` | Plain-text summary |
 | `results/` | **Directory mode**: `results/<target>.json` + `summary.csv` |
 
 Format override: `-format json|jsonl|csv|md|html|txt`.
@@ -144,7 +145,7 @@ Format override: `-format json|jsonl|csv|md|html|txt`.
 | `-rate` | 0 (∞) | max ops/sec per target |
 | `-passive` | false | skip bruteforce |
 | `-probe-subs` | true | HTTP-probe discovered subdomains |
-| `-o` / `-format` | — | output path & format |
+| `-o` / `-format` | `results/` | output path & format |
 | `-silent` | false | no UI, one line per target |
 | `-no-color` | false | disable colors |
 | `-h`, `--help` | — | full help |
