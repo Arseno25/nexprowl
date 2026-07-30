@@ -2,13 +2,9 @@ package ui
 
 import (
 	"fmt"
-	"runtime"
 	"strings"
 
 	"github.com/pterm/pterm"
-
-	"nexprowl/internal/detect"
-	"nexprowl/internal/scanner"
 )
 
 var (
@@ -47,15 +43,9 @@ func scanLogo() string {
 	}, "\n")
 }
 
-// Banner renders the gradient ASCII banner + metadata line.
+// Banner renders the gradient ASCII scanner banner.
 func Banner() {
 	pterm.DefaultCenter.Println(gradientString(scanLogo()))
-	pterm.Println()
-
-	tech, waf, takeover := detect.SignatureCounts()
-	meta := fmt.Sprintf("v%s by shadow0x0  ·  %s/%s  ·  %d tech sigs  ·  %d waf sigs  ·  %d takeover fingerprints",
-		scanner.Version, runtime.GOOS, runtime.GOARCH, tech, waf, takeover)
-	pterm.DefaultCenter.Println(dim.Sprint(meta))
 	pterm.DefaultCenter.Println(dim.Sprint(strings.Repeat("─", 64)))
 }
 
