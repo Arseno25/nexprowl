@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/pterm/pterm"
-	"github.com/pterm/pterm/putils"
 
 	"nexprowl/internal/detect"
 	"nexprowl/internal/scanner"
@@ -37,33 +36,21 @@ func gradientString(s string) string {
 	return b.String()
 }
 
-func scanIcon() string {
+func scanLogo() string {
 	return strings.Join([]string{
-		`      ╭──────────╮`,
-		`     ╱  ·   ╱     ╲`,
-		`    │   ── ◉ ──  · │`,
-		`     ╲     ╲      ╱`,
-		`      ╰──────────╯╲`,
-		`                   ╲`,
-		`                    ╲`,
+		`        ╭────────────────╮`,
+		`      ╱      ·    ╱        ╲`,
+		`     │        ─── ◉ ───  ·  │       >_ N E X P R O W L`,
+		`      ╲          ╲         ╱           ATTACK SURFACE RECONNAISSANCE`,
+		`        ╰────────────────╯╲`,
+		`                            ╲`,
+		`                             ╲`,
 	}, "\n")
 }
 
 // Banner renders the gradient ASCII banner + metadata line.
 func Banner() {
-	pterm.DefaultCenter.Println(gradientString(scanIcon()))
-
-	word := "NEXPROWL"
-	letters := make([]pterm.Letters, 0, len(word))
-	n := float32(len(word))
-	for i, ch := range word {
-		rgb := gradStart.Fade(0, n, float32(i), gradEnd)
-		letters = append(letters, putils.LettersFromStringWithRGB(string(ch), rgb))
-	}
-	big, _ := pterm.DefaultBigText.WithLetters(letters...).Srender()
-	pterm.DefaultCenter.Println(big)
-
-	pterm.DefaultCenter.Println(gradientString("a l l - i n - o n e   d o m a i n   r e c o n n a i s s a n c e"))
+	pterm.DefaultCenter.Println(gradientString(scanLogo()))
 	pterm.Println()
 
 	tech, waf, takeover := detect.SignatureCounts()
