@@ -37,8 +37,22 @@ func gradientString(s string) string {
 	return b.String()
 }
 
+func scanIcon() string {
+	return strings.Join([]string{
+		`      ╭──────────╮`,
+		`     ╱  ·   ╱     ╲`,
+		`    │   ── ◉ ──  · │`,
+		`     ╲     ╲      ╱`,
+		`      ╰──────────╯╲`,
+		`                   ╲`,
+		`                    ╲`,
+	}, "\n")
+}
+
 // Banner renders the gradient ASCII banner + metadata line.
 func Banner() {
+	pterm.DefaultCenter.Println(gradientString(scanIcon()))
+
 	word := "NEXPROWL"
 	letters := make([]pterm.Letters, 0, len(word))
 	n := float32(len(word))

@@ -93,7 +93,7 @@ func TestRendererAndHumanOutput(t *testing.T) {
 		PrintSaved([]string{filepath.Join("results", "run", "report.html")})
 	})
 	for _, want := range []string{
-		"NEXPROWL", "[READY]", "[RUN]", "nexprowl [flags]",
+		"◉", "NEXPROWL", "[READY]", "[RUN]", "nexprowl [flags]",
 		"[STEP 01/02]", "[SUB]", "[PORT]", "[WEB]", "[RISK]", "[WARN]", "[DONE]",
 		"example.com", "[SAVED]",
 	} {
@@ -115,6 +115,9 @@ func TestUIHelpers(t *testing.T) {
 	}
 	if orDash("") != "-" || orDash("x") != "x" || gradientString("") != "" {
 		t.Error("UI helper output is inconsistent")
+	}
+	if icon := scanIcon(); !strings.Contains(icon, "◉") || strings.Count(icon, "\n") != 6 {
+		t.Errorf("scan icon = %q", icon)
 	}
 	output := captureOutput(t, func() {
 		DisableColors()
