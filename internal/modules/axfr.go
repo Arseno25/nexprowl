@@ -29,12 +29,15 @@ const (
 	dnsTypeMX    = 15
 	dnsTypeTXT   = 16
 	dnsTypeAAAA  = 28
+	dnsTypeSRV   = 33
+	dnsTypeCAA   = 257
 	dnsTypeAXFR  = 252
 )
 
 var dnsTypeName = map[uint16]string{
 	dnsTypeA: "A", dnsTypeNS: "NS", dnsTypeCNAME: "CNAME", dnsTypeSOA: "SOA",
 	dnsTypePTR: "PTR", dnsTypeMX: "MX", dnsTypeTXT: "TXT", dnsTypeAAAA: "AAAA",
+	dnsTypeSRV: "SRV", dnsTypeCAA: "CAA",
 }
 
 var (
@@ -284,6 +287,16 @@ func parseDNSMessage(msg []byte) ([]string, []string, error) {
 					hosts = append(hosts, v)
 				}
 			}
+		case dnsTypeSRV:
+			if rdLen >= 7 {
+				if v, _, err := decodeName(msg, offset+6); err == nil {
+					value = fmt.Sprintf("%d %d %d %s",
+						binary.BigEndian.Uint16(rdata[:2]),
+						binary.BigEndian.Uint16(rdata[2:4]),
+						binary.BigEndian.Uint16(rdata[4:6]), v)
+					hosts = append(hosts, v)
+				}
+			}
 		case dnsTypeSOA:
 			mname, next2, err1 := decodeName(msg, offset)
 			rname, _, err2 := decodeName(msg, next2)
@@ -295,6 +308,14 @@ func parseDNSMessage(msg []byte) ([]string, []string, error) {
 				n := int(rdata[0])
 				if 1+n <= rdLen {
 					value = string(rdata[1 : 1+n])
+				}
+			}
+		case dnsTypeCAA:
+			if rdLen >= 3 {
+				tagLen := int(rdata[1])
+				if 2+tagLen <= rdLen {
+					value = fmt.Sprintf("%d %s %s", rdata[0],
+						string(rdata[2:2+tagLen]), string(rdata[2+tagLen:]))
 				}
 			}
 		}

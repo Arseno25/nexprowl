@@ -15,6 +15,7 @@ type htmlReportData struct {
 	Subs      int
 	Ports     int
 	Live      int
+	Endpoints int
 	Takeovers int
 }
 
@@ -27,6 +28,7 @@ func writeHTML(path string, results []*scanner.Result) error {
 		data.Subs += len(r.Subdomains)
 		data.Ports += len(r.Ports)
 		data.Live += len(r.Web)
+		data.Endpoints += len(r.Endpoints)
 		data.Takeovers += len(r.Takeovers)
 	}
 
@@ -73,7 +75,7 @@ h1{margin:6px 0 2px;font-size:clamp(28px,5vw,48px);line-height:1.05;letter-spaci
 h2{margin:0;font-size:22px;overflow-wrap:anywhere}
 h3{margin:0 0 14px;font-size:15px;color:#cce0ed;letter-spacing:.02em}
 .muted{color:var(--muted)}
-.summary,.target-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.summary,.target-stats{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
 .metric,.panel,.target{background:linear-gradient(145deg,rgba(18,34,49,.96),rgba(10,23,34,.96));border:1px solid var(--line);box-shadow:0 18px 60px rgba(0,0,0,.18)}
 .metric{padding:18px;border-radius:14px}
 .metric strong{display:block;font-size:26px;line-height:1.1}
@@ -121,6 +123,7 @@ footer{padding-top:26px;text-align:center;color:var(--muted);font-size:12px}
   <div class="metric"><strong>{{.Subs}}</strong><span>Subdomains</span></div>
   <div class="metric"><strong>{{.Ports}}</strong><span>Open ports</span></div>
   <div class="metric"><strong>{{.Live}}</strong><span>Live web</span></div>
+  <div class="metric"><strong>{{.Endpoints}}</strong><span>Endpoints</span></div>
   <div class="metric"><strong>{{.Takeovers}}</strong><span>Takeovers</span></div>
 </section>
 
@@ -152,6 +155,12 @@ footer{padding-top:26px;text-align:center;color:var(--muted);font-size:12px}
         {{if .MX}}<dt>MX</dt><dd>{{join .MX ", "}}</dd>{{end}}
         {{if .NS}}<dt>NS</dt><dd>{{join .NS ", "}}</dd>{{end}}
         {{if .TXT}}<dt>TXT</dt><dd>{{join .TXT ", "}}</dd>{{end}}
+        {{if .CAA}}<dt>CAA</dt><dd>{{join .CAA ", "}}</dd>{{end}}
+        {{if .SOA}}<dt>SOA</dt><dd>{{join .SOA ", "}}</dd>{{end}}
+        {{if .SRV}}<dt>SRV</dt><dd>{{join .SRV ", "}}</dd>{{end}}
+        {{if .PTR}}<dt>PTR</dt><dd>{{join .PTR ", "}}</dd>{{end}}
+        {{if .SPF}}<dt>SPF</dt><dd>{{join .SPF ", "}}</dd>{{end}}
+        {{if .DMARC}}<dt>DMARC</dt><dd>{{join .DMARC ", "}}</dd>{{end}}
         {{if .CNAME}}<dt>CNAME</dt><dd>{{.CNAME}}</dd>{{end}}
       </dl>
     </section>
@@ -174,12 +183,13 @@ footer{padding-top:26px;text-align:center;color:var(--muted);font-size:12px}
     <section class="panel wide">
       <h3>Live web services</h3>
       <div class="table-wrap"><table>
-        <thead><tr><th>URL</th><th>Status</th><th>Title</th><th>Server</th><th>Technology</th><th>WAF / CDN</th></tr></thead>
+        <thead><tr><th>URL</th><th>Status</th><th>Title</th><th>Server</th><th>Technology</th><th>WAF / CDN</th><th>Evidence</th></tr></thead>
         <tbody>{{range .Web}}<tr>
           <td><a href="{{.URL}}" target="_blank" rel="noreferrer">{{.URL}}</a></td>
           <td><span class="status {{statusClass .Status}}">{{.Status}}</span></td>
           <td>{{dash .Title}}</td><td>{{dash .Server}}</td>
           <td>{{dash (join .Technologies ", ")}}</td><td>{{dash .WAF}}{{if .CDN}} / {{.CDN}}{{end}}</td>
+          <td>{{if .Screenshot}}<a href="{{.Screenshot}}">screenshot</a>{{else}}—{{end}}</td>
         </tr>{{end}}</tbody>
       </table></div>
     </section>
@@ -189,8 +199,8 @@ footer{padding-top:26px;text-align:center;color:var(--muted);font-size:12px}
     <section class="panel">
       <h3>Open ports</h3>
       <div class="table-wrap"><table>
-        <thead><tr><th>Port</th><th>Service</th><th>Banner</th></tr></thead>
-        <tbody>{{range .Ports}}<tr><td><code>{{.Port}}</code></td><td>{{dash .Service}}</td><td>{{dash .Banner}}</td></tr>{{end}}</tbody>
+        <thead><tr><th>Host / IP</th><th>Port</th><th>Service</th><th>Banner</th></tr></thead>
+        <tbody>{{range .Ports}}<tr><td><code>{{.Host}}{{if .IP}} / {{.IP}}{{end}}</code></td><td><code>{{.Port}}</code></td><td>{{dash .Service}}</td><td>{{dash .Banner}}</td></tr>{{end}}</tbody>
       </table></div>
     </section>
     {{end}}
@@ -211,6 +221,46 @@ footer{padding-top:26px;text-align:center;color:var(--muted);font-size:12px}
       <div class="table-wrap"><table>
         <thead><tr><th>Host</th><th>IPs</th><th>CNAME</th><th>Source</th></tr></thead>
         <tbody>{{range .Subdomains}}<tr><td><code>{{.Host}}</code></td><td>{{dash (join .IPs ", ")}}</td><td>{{dash .CNAME}}</td><td>{{.Source}}</td></tr>{{end}}</tbody>
+      </table></div>
+    </section>
+    {{end}}
+
+    {{if .Endpoints}}
+    <section class="panel wide">
+      <h3>Discovered endpoints</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>URL</th><th>Source</th><th>Depth</th></tr></thead>
+        <tbody>{{range .Endpoints}}<tr><td><a href="{{.URL}}" target="_blank" rel="noreferrer">{{.URL}}</a></td><td>{{.Source}}</td><td>{{.Depth}}</td></tr>{{end}}</tbody>
+      </table></div>
+    </section>
+    {{end}}
+
+    {{if .Networks}}
+    <section class="panel">
+      <h3>Network ownership</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>IP</th><th>ASN</th><th>Prefix</th><th>Owner</th></tr></thead>
+        <tbody>{{range .Networks}}<tr><td><code>{{.IP}}</code></td><td>{{.ASN}}</td><td>{{.Prefix}}</td><td>{{.Owner}}</td></tr>{{end}}</tbody>
+      </table></div>
+    </section>
+    {{end}}
+
+    {{if .Sources}}
+    <section class="panel">
+      <h3>Passive source health</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Source</th><th>Found</th><th>Duration</th><th>Error</th></tr></thead>
+        <tbody>{{range .Sources}}<tr><td>{{.Name}}</td><td>{{.Found}}</td><td>{{.DurationMs}} ms</td><td>{{dash .Error}}</td></tr>{{end}}</tbody>
+      </table></div>
+    </section>
+    {{end}}
+
+    {{if .TLSHosts}}
+    <section class="panel wide">
+      <h3>TLS endpoints</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Host</th><th>Port</th><th>Version</th><th>Issuer</th><th>Days left</th><th>Mismatch</th></tr></thead>
+        <tbody>{{range .TLSHosts}}<tr><td><code>{{.Host}}</code></td><td>{{.Port}}</td><td>{{.Version}}</td><td>{{.Issuer}}</td><td>{{.DaysLeft}}</td><td>{{if .Mismatch}}yes{{else}}no{{end}}</td></tr>{{end}}</tbody>
       </table></div>
     </section>
     {{end}}

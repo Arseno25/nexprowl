@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -42,11 +43,18 @@ var passiveSources = []passiveSource{
 }
 
 func httpGet(ctx context.Context, client *http.Client, url string) ([]byte, error) {
+	return httpGetHeaders(ctx, client, url, nil)
+}
+
+func httpGetHeaders(ctx context.Context, client *http.Client, url string, headers map[string]string) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) dscan/1.0")
+	req.Header.Set("User-Agent", "Mozilla/5.0 dscan/"+scanner.Version)
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -56,6 +64,75 @@ func httpGet(ctx context.Context, client *http.Client, url string) ([]byte, erro
 		return nil, fmt.Errorf("status %d", resp.StatusCode)
 	}
 	return io.ReadAll(io.LimitReader(resp.Body, 8<<20))
+}
+
+func configuredPassiveSources() []passiveSource {
+	sources := append([]passiveSource(nil), passiveSources...)
+	if key := strings.TrimSpace(os.Getenv("DSCAN_SECURITYTRAILS_KEY")); key != "" {
+		sources = append(sources, passiveSource{"securitytrails", func(ctx context.Context, client *http.Client, domain string) ([]string, error) {
+			body, err := httpGetHeaders(ctx, client,
+				"https://api.securitytrails.com/v1/domain/"+url.PathEscape(domain)+"/subdomains",
+				map[string]string{"APIKEY": key})
+			if err != nil {
+				return nil, err
+			}
+			var data struct {
+				Subdomains []string `json:"subdomains"`
+			}
+			if err := json.Unmarshal(body, &data); err != nil {
+				return nil, err
+			}
+			out := make([]string, 0, len(data.Subdomains))
+			for _, sub := range data.Subdomains {
+				out = append(out, sub+"."+domain)
+			}
+			return out, nil
+		}})
+	}
+	if key := strings.TrimSpace(os.Getenv("DSCAN_VIRUSTOTAL_KEY")); key != "" {
+		sources = append(sources, passiveSource{"virustotal", func(ctx context.Context, client *http.Client, domain string) ([]string, error) {
+			body, err := httpGetHeaders(ctx, client,
+				"https://www.virustotal.com/api/v3/domains/"+url.PathEscape(domain)+"/subdomains?limit=40",
+				map[string]string{"x-apikey": key})
+			if err != nil {
+				return nil, err
+			}
+			var data struct {
+				Data []struct {
+					ID string `json:"id"`
+				} `json:"data"`
+			}
+			if err := json.Unmarshal(body, &data); err != nil {
+				return nil, err
+			}
+			out := make([]string, 0, len(data.Data))
+			for _, item := range data.Data {
+				out = append(out, item.ID)
+			}
+			return out, nil
+		}})
+	}
+	if key := strings.TrimSpace(os.Getenv("DSCAN_SHODAN_KEY")); key != "" {
+		sources = append(sources, passiveSource{"shodan", func(ctx context.Context, client *http.Client, domain string) ([]string, error) {
+			body, err := httpGet(ctx, client,
+				"https://api.shodan.io/dns/domain/"+url.PathEscape(domain)+"?key="+url.QueryEscape(key))
+			if err != nil {
+				return nil, err
+			}
+			var data struct {
+				Subdomains []string `json:"subdomains"`
+			}
+			if err := json.Unmarshal(body, &data); err != nil {
+				return nil, err
+			}
+			out := make([]string, 0, len(data.Subdomains))
+			for _, sub := range data.Subdomains {
+				out = append(out, sub+"."+domain)
+			}
+			return out, nil
+		}})
+	}
+	return sources
 }
 
 func fetchCrtSh(ctx context.Context, client *http.Client, domain string) ([]string, error) {
@@ -157,21 +234,45 @@ func fetchAnubis(ctx context.Context, client *http.Client, domain string) ([]str
 func (Subdomain) Run(ctx context.Context, sc *scanner.ScanContext) error {
 	found := make(map[string]*scanner.Subdomain)
 	var mu sync.Mutex
+	maxHosts := sc.Opts.MaxHosts
+	if maxHosts <= 0 {
+		maxHosts = 10000
+	}
 
 	// seed with hosts already discovered (e.g. AXFR zone dump in dns phase)
 	for _, s := range sc.Result.Subdomains {
+		if len(found) >= maxHosts {
+			break
+		}
 		found[s.Host] = &scanner.Subdomain{Host: s.Host, Source: s.Source}
+	}
+	// The early TLS pass runs before enumeration so certificate SANs become
+	// first-class candidates instead of dead-end report metadata.
+	if sc.Result.TLS != nil {
+		for _, host := range sc.Result.TLS.SANs {
+			if len(found) >= maxHosts {
+				break
+			}
+			host = strings.TrimPrefix(host, "*.")
+			if sc.InScope(host) && host != sc.Target {
+				found[host] = &scanner.Subdomain{Host: host, Source: "tls-san"}
+			}
+		}
 	}
 
 	add := func(host, source string) {
 		host = strings.TrimSuffix(strings.ToLower(strings.TrimSpace(host)), ".")
-		if host == "" || host == sc.Target || !strings.HasSuffix(host, "."+sc.Target) {
+		if host == "" || host == sc.Target || !sc.InScope(host) {
 			return
 		}
 		if strings.ContainsAny(host, " *@") {
 			return
 		}
 		mu.Lock()
+		if len(found) >= maxHosts {
+			mu.Unlock()
+			return
+		}
 		if _, ok := found[host]; !ok {
 			found[host] = &scanner.Subdomain{Host: host, Source: source}
 		}
@@ -180,20 +281,33 @@ func (Subdomain) Run(ctx context.Context, sc *scanner.ScanContext) error {
 
 	// Phase 1 — passive sources in parallel
 	client := &http.Client{Timeout: 12 * time.Second}
+	sources := configuredPassiveSources()
 	var wg sync.WaitGroup
-	for _, src := range passiveSources {
+	for _, src := range sources {
 		wg.Add(1)
 		go func(src passiveSource) {
 			defer wg.Done()
+			start := time.Now()
 			c, cancel := context.WithTimeout(ctx, 15*time.Second)
 			defer cancel()
+			sc.Limit(c)
 			hosts, err := src.fetch(c, client, sc.Target)
+			status := scanner.SourceStatus{
+				Name: src.name, Found: len(hosts), DurationMs: time.Since(start).Milliseconds(),
+			}
 			if err != nil {
+				status.Error = err.Error()
+				mu.Lock()
+				sc.Result.Sources = append(sc.Result.Sources, status)
+				mu.Unlock()
 				return
 			}
 			for _, h := range hosts {
 				add(h, src.name)
 			}
+			mu.Lock()
+			sc.Result.Sources = append(sc.Result.Sources, status)
+			mu.Unlock()
 		}(src)
 	}
 	wg.Wait()
@@ -201,7 +315,10 @@ func (Subdomain) Run(ctx context.Context, sc *scanner.ScanContext) error {
 	mu.Lock()
 	passiveUnique := len(found)
 	mu.Unlock()
-	sc.Log(scanner.LevelInfo, "passive: %d unique from %d sources", passiveUnique, len(passiveSources))
+	sort.Slice(sc.Result.Sources, func(i, j int) bool {
+		return sc.Result.Sources[i].Name < sc.Result.Sources[j].Name
+	})
+	sc.Log(scanner.LevelInfo, "passive: %d unique from %d sources", passiveUnique, len(sources))
 
 	// Phase 2 — bruteforce with wildcard filtering.
 	// Wildcard detection lives here, not in the dns module: filtering is
@@ -220,7 +337,7 @@ func (Subdomain) Run(ctx context.Context, sc *scanner.ScanContext) error {
 				host := word + "." + sc.Target
 				sc.Limit(ctx)
 				c, cancel := context.WithTimeout(ctx, sc.Opts.Timeout)
-				ips, err := r.LookupIP(c, "ip4", host)
+				ips, err := r.LookupIP(c, "ip", host)
 				cancel()
 				if err != nil || len(ips) == 0 {
 					continue
@@ -278,7 +395,7 @@ func (Subdomain) Run(ctx context.Context, sc *scanner.ScanContext) error {
 		for e := range jobs {
 			c, cancel := context.WithTimeout(ctx, sc.Opts.Timeout)
 			cname, _ := r.LookupCNAME(c, e.Host)
-			ips, _ := r.LookupIP(c, "ip4", e.Host)
+			ips, _ := r.LookupIP(c, "ip", e.Host)
 			cancel()
 			if cname = strings.TrimSuffix(cname, "."); cname != "" && cname != e.Host {
 				e.CNAME = cname

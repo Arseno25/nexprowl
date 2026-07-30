@@ -19,64 +19,108 @@ type Ports struct{}
 
 func (Ports) Name() string { return "ports" }
 
+type portTarget struct {
+	host string
+	ip   string
+}
+
+type portJob struct {
+	target portTarget
+	port   int
+}
+
 func (Ports) Run(ctx context.Context, sc *scanner.ScanContext) error {
-	host := sc.Target
-	if len(sc.Result.IPs) > 0 {
-		host = sc.Result.IPs[0] // skip re-resolving per port
+	var targets []portTarget
+	addTarget := func(host string, ips []string) {
+		if len(ips) == 0 {
+			targets = append(targets, portTarget{host: host})
+			return
+		}
+		if !sc.Opts.ScanAllIPs {
+			ips = ips[:1]
+		}
+		for _, ip := range ips {
+			targets = append(targets, portTarget{host: host, ip: ip})
+		}
+	}
+	mainIPs := append([]string{}, sc.Result.IPs...)
+	if sc.Result.DNS != nil {
+		mainIPs = append(mainIPs, sc.Result.DNS.AAAA...)
+	}
+	addTarget(sc.Target, mainIPs)
+	if sc.Opts.PortsSubs {
+		for _, sub := range sc.Result.Subdomains {
+			addTarget(sub.Host, sub.IPs)
+		}
 	}
 
-	jobs := make(chan int, sc.Opts.Workers)
-	results := make(chan scanner.Port, len(sc.Opts.Ports))
+	jobs := make(chan portJob, sc.Opts.Workers)
 	var wg sync.WaitGroup
+	var mu sync.Mutex
+	var results []scanner.Port
 	dialer := &net.Dialer{Timeout: sc.Opts.Timeout}
 
 	worker := func() {
 		defer wg.Done()
-		for port := range jobs {
+		for job := range jobs {
+			address := job.target.ip
+			if address == "" {
+				address = job.target.host
+			}
 			sc.Limit(ctx)
 			c, cancel := context.WithTimeout(ctx, sc.Opts.Timeout)
-			conn, err := dialer.DialContext(c, "tcp", net.JoinHostPort(host, fmt.Sprint(port)))
+			conn, err := dialer.DialContext(c, "tcp", net.JoinHostPort(address, fmt.Sprint(job.port)))
 			cancel()
 			if err != nil {
 				continue
 			}
-			p := scanner.Port{Port: port, Service: detect.ServiceName(port)}
-			if detect.WantsBanner(port) {
+			p := scanner.Port{
+				Host: job.target.host, IP: job.target.ip, Port: job.port,
+				Service: detect.ServiceName(job.port),
+			}
+			if detect.WantsBanner(job.port) {
 				p.Banner = grabBanner(conn)
 			}
 			_ = conn.Close()
-			results <- p
+			mu.Lock()
+			results = append(results, p)
+			mu.Unlock()
 		}
 	}
 
-	for i := 0; i < min(sc.Opts.Workers, len(sc.Opts.Ports)); i++ {
+	workCount := len(targets) * len(sc.Opts.Ports)
+	for i := 0; i < min(sc.Opts.Workers, workCount); i++ {
 		wg.Add(1)
 		go worker()
 	}
 portLoop:
-	for _, p := range sc.Opts.Ports {
-		select {
-		case jobs <- p:
-		case <-ctx.Done():
-			break portLoop
+	for _, target := range targets {
+		for _, p := range sc.Opts.Ports {
+			select {
+			case jobs <- portJob{target: target, port: p}:
+			case <-ctx.Done():
+				break portLoop
+			}
 		}
 	}
 	close(jobs)
 	wg.Wait()
-	close(results)
-
-	for p := range results {
-		sc.Result.Ports = append(sc.Result.Ports, p)
-	}
+	sc.Result.Ports = results
 	sort.Slice(sc.Result.Ports, func(i, j int) bool {
+		if sc.Result.Ports[i].Host != sc.Result.Ports[j].Host {
+			return sc.Result.Ports[i].Host < sc.Result.Ports[j].Host
+		}
+		if sc.Result.Ports[i].IP != sc.Result.Ports[j].IP {
+			return sc.Result.Ports[i].IP < sc.Result.Ports[j].IP
+		}
 		return sc.Result.Ports[i].Port < sc.Result.Ports[j].Port
 	})
 
 	for _, p := range sc.Result.Ports {
 		if p.Banner != "" {
-			sc.Found("port", "%d/tcp %-12s %s", p.Port, p.Service, p.Banner)
+			sc.Found("port", "%s:%d/tcp %-12s %s", p.Host, p.Port, p.Service, p.Banner)
 		} else {
-			sc.Found("port", "%d/tcp %s", p.Port, p.Service)
+			sc.Found("port", "%s:%d/tcp %s", p.Host, p.Port, p.Service)
 		}
 	}
 	sc.Log(scanner.LevelSuccess, "%d open ports", len(sc.Result.Ports))

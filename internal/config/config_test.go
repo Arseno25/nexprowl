@@ -2,6 +2,7 @@ package config
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -25,6 +26,17 @@ func TestReorderArgs(t *testing.T) {
 		if got := reorderArgs(c.in); !reflect.DeepEqual(got, c.want) {
 			t.Errorf("reorderArgs(%v) = %v, want %v", c.in, got, c.want)
 		}
+	}
+}
+
+func TestLoadReader(t *testing.T) {
+	got, err := LoadReader(strings.NewReader(" example.com \n# comment\nexample.com\napi.example.com\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"example.com", "api.example.com"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("LoadReader = %v, want %v", got, want)
 	}
 }
 

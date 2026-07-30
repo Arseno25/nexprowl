@@ -5,6 +5,8 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -88,6 +90,40 @@ func Save(path string, format Format, results []*scanner.Result) ([]string, erro
 		return written, err
 	}
 	written = append(written, summary)
+
+	htmlReport := filepath.Join(path, "report.html")
+	if err := writeHTML(htmlReport, results); err != nil {
+		return written, err
+	}
+	written = append(written, htmlReport)
+
+	manifestPath := filepath.Join(path, "manifest.json")
+	if err := writeManifest(manifestPath, NewManifest(results)); err != nil {
+		return written, err
+	}
+	written = append(written, manifestPath)
+
+	artifacts := map[string][]string{
+		"subdomains.txt": collect(results, "subdomains"),
+		"urls.txt":       collect(results, "urls"),
+		"hostports.txt":  collect(results, "hostports"),
+		"endpoints.txt":  collect(results, "endpoints"),
+		"ips.txt":        collect(results, "ips"),
+	}
+	for name, lines := range artifacts {
+		fp := filepath.Join(path, name)
+		content := strings.Join(lines, "\n")
+		if content != "" {
+			content += "\n"
+		}
+		if err := os.WriteFile(fp, []byte(content), 0644); err != nil {
+			return written, err
+		}
+		written = append(written, fp)
+	}
+	if err := os.WriteFile(filepath.Join(filepath.Dir(path), "latest.txt"), []byte(filepath.Base(path)+"\n"), 0644); err == nil {
+		written = append(written, filepath.Join(filepath.Dir(path), "latest.txt"))
+	}
 	return written, nil
 }
 
@@ -150,42 +186,66 @@ func writeCSV(path string, results []*scanner.Result) error {
 	defer w.Flush()
 
 	if err := w.Write([]string{
-		"target", "host", "ips", "cname", "status", "title",
-		"server", "technologies", "waf", "open_ports", "source",
+		"target", "host", "ips", "cname", "url", "status", "title",
+		"server", "technologies", "waf", "cdn", "open_ports", "source",
 	}); err != nil {
 		return err
 	}
 
 	for _, r := range results {
-		var portList []string
+		portsByHost := map[string][]string{}
 		for _, p := range r.Ports {
-			portList = append(portList, fmt.Sprint(p.Port))
+			host := p.Host
+			if host == "" {
+				host = r.Target
+			}
+			portsByHost[host] = append(portsByHost[host], fmt.Sprint(p.Port))
 		}
-		webByHost := map[string]scanner.WebResult{}
+		webByHost := map[string][]scanner.WebResult{}
 		for _, wr := range r.Web {
-			host := strings.TrimPrefix(strings.TrimPrefix(wr.URL, "https://"), "http://")
-			webByHost[host] = wr
+			host := wr.Host
+			if host == "" {
+				host = r.Target
+			}
+			webByHost[host] = append(webByHost[host], wr)
 		}
 
-		writeRow := func(host string, ips []string, cname, source string) {
-			wr, live := webByHost[host]
+		writeRow := func(host string, ips []string, cname, source string, wr *scanner.WebResult) {
 			row := []string{
 				r.Target, host, strings.Join(ips, "|"), cname,
-				"", "", "", "", "", strings.Join(portList, "|"), source,
+				"", "", "", "", "", "", "", strings.Join(portsByHost[host], "|"), source,
 			}
-			if live {
-				row[4] = fmt.Sprint(wr.Status)
-				row[5] = wr.Title
-				row[6] = wr.Server
-				row[7] = strings.Join(wr.Technologies, "|")
-				row[8] = wr.WAF
+			if wr != nil {
+				row[4] = wr.URL
+				row[5] = fmt.Sprint(wr.Status)
+				row[6] = wr.Title
+				row[7] = wr.Server
+				row[8] = strings.Join(wr.Technologies, "|")
+				row[9] = wr.WAF
+				row[10] = wr.CDN
 			}
 			_ = w.Write(row)
 		}
+		writeHost := func(host string, ips []string, cname, source string) {
+			web := webByHost[host]
+			if len(web) == 0 {
+				writeRow(host, ips, cname, source, nil)
+				return
+			}
+			for i := range web {
+				writeRow(host, ips, cname, source, &web[i])
+			}
+		}
 
-		writeRow(r.Target, r.IPs, "", "main")
+		writeHost(r.Target, r.IPs, "", "main")
 		for _, sub := range r.Subdomains {
-			writeRow(sub.Host, sub.IPs, sub.CNAME, sub.Source)
+			writeHost(sub.Host, sub.IPs, sub.CNAME, sub.Source)
+		}
+		for _, vhost := range r.VHosts {
+			if _, known := webByHost[vhost.Host]; known {
+				continue
+			}
+			writeHost(vhost.Host, nil, "", "vhost")
 		}
 	}
 	return w.Error()
@@ -229,6 +289,12 @@ func writeMarkdown(path string, results []*scanner.Result) error {
 			writeDNSRow("AAAA", r.DNS.AAAA)
 			writeDNSRow("MX", r.DNS.MX)
 			writeDNSRow("NS", r.DNS.NS)
+			writeDNSRow("CAA", r.DNS.CAA)
+			writeDNSRow("SOA", r.DNS.SOA)
+			writeDNSRow("SRV", r.DNS.SRV)
+			writeDNSRow("PTR", r.DNS.PTR)
+			writeDNSRow("SPF", r.DNS.SPF)
+			writeDNSRow("DMARC", r.DNS.DMARC)
 			if r.DNS.CNAME != "" {
 				fmt.Fprintf(&b, "| CNAME | %s |\n", mdCell(r.DNS.CNAME))
 			}
@@ -255,19 +321,24 @@ func writeMarkdown(path string, results []*scanner.Result) error {
 
 		if len(r.Ports) > 0 {
 			b.WriteString("\n### Open ports\n\n")
-			b.WriteString("| port | service | banner |\n|---|---|---|\n")
+			b.WriteString("| host | ip | port | service | banner |\n|---|---|---|---|---|\n")
 			for _, p := range r.Ports {
-				fmt.Fprintf(&b, "| %d | %s | %s |\n", p.Port, p.Service, mdCell(p.Banner))
+				fmt.Fprintf(&b, "| %s | %s | %d | %s | %s |\n",
+					mdCell(p.Host), p.IP, p.Port, p.Service, mdCell(p.Banner))
 			}
 		}
 
 		if len(r.Web) > 0 {
 			b.WriteString("\n### Live web services\n\n")
-			b.WriteString("| url | status | title | server | tech | waf |\n|---|---|---|---|---|---|\n")
+			b.WriteString("| url | status | title | server | tech | waf | screenshot |\n|---|---|---|---|---|---|---|\n")
 			for _, w := range r.Web {
-				fmt.Fprintf(&b, "| %s | %d | %s | %s | %s | %s |\n",
+				screenshot := ""
+				if w.Screenshot != "" {
+					screenshot = "[view](" + w.Screenshot + ")"
+				}
+				fmt.Fprintf(&b, "| %s | %d | %s | %s | %s | %s | %s |\n",
 					mdCell(w.URL), w.Status, mdCell(w.Title), mdCell(w.Server),
-					mdCell(strings.Join(w.Technologies, ", ")), mdCell(w.WAF))
+					mdCell(strings.Join(w.Technologies, ", ")), mdCell(w.WAF), screenshot)
 			}
 		}
 
@@ -289,6 +360,32 @@ func writeMarkdown(path string, results []*scanner.Result) error {
 				exp = " — **EXPIRED**"
 			}
 			fmt.Fprintf(&b, "- **Validity:** %s → %s%s\n", r.TLS.ValidFrom, r.TLS.ValidTo, exp)
+		}
+
+		if len(r.Endpoints) > 0 {
+			b.WriteString("\n### Endpoints\n\n")
+			b.WriteString("| url | source | depth |\n|---|---|---|\n")
+			for _, endpoint := range r.Endpoints {
+				fmt.Fprintf(&b, "| %s | %s | %d |\n", mdCell(endpoint.URL), endpoint.Source, endpoint.Depth)
+			}
+		}
+
+		if len(r.Networks) > 0 {
+			b.WriteString("\n### Network ownership\n\n")
+			b.WriteString("| ip | asn | prefix | owner |\n|---|---|---|---|\n")
+			for _, network := range r.Networks {
+				fmt.Fprintf(&b, "| %s | %s | %s | %s |\n",
+					network.IP, network.ASN, network.Prefix, mdCell(network.Owner))
+			}
+		}
+
+		if len(r.Sources) > 0 {
+			b.WriteString("\n### Passive sources\n\n")
+			b.WriteString("| source | found | duration | error |\n|---|---|---|---|\n")
+			for _, source := range r.Sources {
+				fmt.Fprintf(&b, "| %s | %d | %d ms | %s |\n",
+					source.Name, source.Found, source.DurationMs, mdCell(source.Error))
+			}
 		}
 
 		if len(r.Takeovers) > 0 {
@@ -371,4 +468,60 @@ func orDash(s string) string {
 		return "-"
 	}
 	return s
+}
+
+// Emit writes one machine-friendly finding per line.
+func Emit(w io.Writer, mode string, results []*scanner.Result) error {
+	if mode == "jsonl" {
+		enc := json.NewEncoder(w)
+		for _, r := range results {
+			if err := enc.Encode(r); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	for _, value := range collect(results, mode) {
+		if _, err := fmt.Fprintln(w, value); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func collect(results []*scanner.Result, mode string) []string {
+	var values []string
+	for _, r := range results {
+		switch mode {
+		case "subdomains":
+			for _, sub := range r.Subdomains {
+				values = append(values, sub.Host)
+			}
+		case "urls":
+			for _, web := range r.Web {
+				values = append(values, web.URL)
+			}
+		case "hostports":
+			for _, port := range r.Ports {
+				host := port.Host
+				if host == "" {
+					host = r.Target
+				}
+				values = append(values, net.JoinHostPort(host, fmt.Sprint(port.Port)))
+			}
+		case "ips":
+			values = append(values, r.IPs...)
+			if r.DNS != nil {
+				values = append(values, r.DNS.AAAA...)
+			}
+			for _, sub := range r.Subdomains {
+				values = append(values, sub.IPs...)
+			}
+		case "endpoints":
+			for _, endpoint := range r.Endpoints {
+				values = append(values, endpoint.URL)
+			}
+		}
+	}
+	return scanner.UniqueSorted(values)
 }

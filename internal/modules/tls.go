@@ -10,13 +10,44 @@ import (
 	"dscan/internal/scanner"
 )
 
-// TLS pulls certificate details: version, cipher, issuer, validity
-// (with expired flag), and SANs (bonus subdomain intel).
+// TLSSeed runs before subdomain discovery so SANs feed enumeration.
+type TLSSeed struct{}
+
+func (TLSSeed) Name() string { return "tls" }
+
+func (TLSSeed) Run(ctx context.Context, sc *scanner.ScanContext) error {
+	if tr := probeTLS(ctx, sc, sc.Target, "", 443); tr != nil {
+		sc.Result.TLS = tr
+		sc.Result.TLSHosts = append(sc.Result.TLSHosts, *tr)
+		logTLS(sc, tr)
+	}
+	return nil
+}
+
+// TLS enriches every HTTPS endpoint after HTTP discovery.
 type TLS struct{}
 
 func (TLS) Name() string { return "tls" }
 
 func (TLS) Run(ctx context.Context, sc *scanner.ScanContext) error {
+	seen := map[string]bool{fmt.Sprintf("%s:%d", sc.Target, 443): sc.Result.TLS != nil}
+	for _, web := range sc.Result.Web {
+		if web.Scheme != "https" {
+			continue
+		}
+		key := fmt.Sprintf("%s:%d", web.Host, web.Port)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		if tr := probeTLS(ctx, sc, web.Host, web.IP, web.Port); tr != nil {
+			sc.Result.TLSHosts = append(sc.Result.TLSHosts, *tr)
+		}
+	}
+	return nil
+}
+
+func probeTLS(ctx context.Context, sc *scanner.ScanContext, host, ip string, port int) *scanner.TLSResult {
 	c, cancel := context.WithTimeout(ctx, sc.Opts.Timeout+2*time.Second)
 	defer cancel()
 
@@ -24,17 +55,20 @@ func (TLS) Run(ctx context.Context, sc *scanner.ScanContext) error {
 		NetDialer: &net.Dialer{Timeout: sc.Opts.Timeout},
 		Config: &tls.Config{
 			InsecureSkipVerify: true, // we want expired/self-signed certs too
-			ServerName:         sc.Target,
+			ServerName:         host,
 			// Go refuses < TLS 1.2 by default, so a legacy-only server would
 			// just fail the handshake and be reported as "no TLS". Reporting
 			// TLS 1.0/1.1 is the point of this module — allow negotiating them.
 			MinVersion: tls.VersionTLS10,
 		},
 	}
-	rawConn, err := dialer.DialContext(c, "tcp", net.JoinHostPort(sc.Target, "443"))
+	address := host
+	if ip != "" {
+		address = ip
+	}
+	rawConn, err := dialer.DialContext(c, "tcp", net.JoinHostPort(address, fmt.Sprint(port)))
 	if err != nil {
-		sc.Log(scanner.LevelInfo, "tls: %v", err)
-		return nil // no TLS is not a module failure
+		return nil
 	}
 	conn, ok := rawConn.(*tls.Conn)
 	if !ok {
@@ -50,6 +84,8 @@ func (TLS) Run(ctx context.Context, sc *scanner.ScanContext) error {
 	cert := state.PeerCertificates[0]
 
 	tr := &scanner.TLSResult{
+		Host:      host,
+		Port:      port,
 		Issuer:    cert.Issuer.String(),
 		Subject:   cert.Subject.String(),
 		ValidFrom: cert.NotBefore.Format("2006-01-02"),
@@ -57,10 +93,14 @@ func (TLS) Run(ctx context.Context, sc *scanner.ScanContext) error {
 		Version:   tlsVersionName(state.Version),
 		Cipher:    tls.CipherSuiteName(state.CipherSuite),
 		Expired:   time.Now().After(cert.NotAfter),
+		DaysLeft:  int(time.Until(cert.NotAfter).Hours() / 24),
 	}
+	tr.Mismatch = cert.VerifyHostname(host) != nil
 	tr.SANs = scanner.UniqueSorted(append(tr.SANs, cert.DNSNames...))
-	sc.Result.TLS = tr
+	return tr
+}
 
+func logTLS(sc *scanner.ScanContext, tr *scanner.TLSResult) {
 	sc.Log(scanner.LevelSuccess, "%s | %s", tr.Version, tr.Cipher)
 	sc.Log(scanner.LevelSuccess, "issuer: %s", tr.Issuer)
 	if tr.Expired {
@@ -76,7 +116,6 @@ func (TLS) Run(ctx context.Context, sc *scanner.ScanContext) error {
 		}
 		sc.Log(scanner.LevelInfo, "SANs (%d): %v%s", len(tr.SANs), show, suffix)
 	}
-	return nil
 }
 
 func tlsVersionName(v uint16) string {

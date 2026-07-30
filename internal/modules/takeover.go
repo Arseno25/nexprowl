@@ -61,7 +61,7 @@ func (Takeover) Run(ctx context.Context, sc *scanner.ScanContext) error {
 		return nil
 	}
 
-	client := newHTTPClient(sc.Opts.Timeout)
+	client := newScopedHTTPClient(sc)
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	sem := make(chan struct{}, sc.Opts.Workers)
@@ -119,7 +119,7 @@ func fetchBody(ctx context.Context, client *http.Client, host string, sc *scanne
 			cancel()
 			continue
 		}
-		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) dscan/1.0")
+		req.Header.Set("User-Agent", "Mozilla/5.0 dscan/"+scanner.Version)
 		resp, err := client.Do(req)
 		if err != nil {
 			cancel()

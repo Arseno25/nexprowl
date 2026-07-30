@@ -32,6 +32,7 @@ func PrintHelp() {
 	row("vhost", "hidden virtual host discovery (Host-header & SNI fuzzing)")
 	row("tls", "certificate info · expiry check · SANs extraction")
 	row("takeover", "dangling CNAME → claimable service detection (50 services)")
+	row("crawl", "bounded in-scope HTML/JS/robots/sitemap endpoint discovery")
 
 	section("SCAN TUNING")
 	row("-p SPEC", "ports: top100 (default) | full | 80,443 | 1-1024")
@@ -45,10 +46,25 @@ func PrintHelp() {
 	row("-timeout N", "network timeout in seconds (default 4)")
 	row("-r FILE", "custom DNS resolvers, round-robin (default: system)")
 	row("-rate N", "max network ops/sec per target (default: unlimited)")
+	row("-scan-all-ips", "port-scan every resolved IPv4/IPv6 address")
+	row("-ports-subs", "port-scan discovered subdomains")
+	row("-probe-both", "probe both HTTP and HTTPS on web ports")
+	row("-active", "enable intrusive checks such as active WAF probing")
+
+	section("SCOPE & DISCOVERY")
+	row("-include DOMAINS", "extra in-scope domains, comma-separated")
+	row("-exclude DOMAINS", "out-of-scope domains, comma-separated")
+	row("-max-hosts N", "maximum discovered hosts per target (default 10000)")
+	row("-crawl-depth N", "maximum crawler depth (default 2)")
+	row("-crawl-max N", "maximum crawled URLs per target (default 500)")
 
 	section("OUTPUT")
 	row("-o PATH", "output file or directory (default: results/)")
 	row("-format FMT", "override format: json | jsonl | csv | md | html | txt")
+	row("-emit FIELD", "stdout: subdomains | urls | hostports | ips | endpoints | jsonl")
+	row("-screenshot", "capture live pages with installed Chrome/Chromium")
+	row("-chrome PATH", "custom Chrome/Chromium executable")
+	row("-webhook URL", "POST scan summary to a webhook")
 	row("-silent", "no UI — one summary line per target (script-friendly)")
 	row("-no-color", "disable colored output")
 
@@ -68,6 +84,8 @@ func PrintHelp() {
 		{"dscan -l targets.txt -passive -silent -o results/subs.jsonl", "passive, pipe-ready for jq/nuclei"},
 		{"dscan -l targets.txt -o results/report.md", "markdown report for bug bounty notes"},
 		{"dscan example.com -o results/report.html", "standalone HTML report"},
+		{"cat domains.txt | dscan -silent -emit urls", "pipeline input and URL output"},
+		{"dscan diff results/old results/new", "compare two scan runs"},
 	})
 	pterm.Println()
 }
@@ -82,7 +100,7 @@ func row(flag, desc string) {
 		fmt.Printf("  %s\n", flag)
 		return
 	}
-	fmt.Printf("  %s %s\n", accent.Sprintf("%-14s", flag), dim.Sprint(desc))
+	fmt.Printf("  %s %s\n", accent.Sprintf("%-20s", flag), dim.Sprint(desc))
 }
 
 func examples(items [][2]string) {

@@ -8,10 +8,12 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"dscan/internal/config"
 	"dscan/internal/modules"
@@ -21,6 +23,17 @@ import (
 )
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "diff" {
+		changed, err := runDiff(os.Args[2:])
+		if err != nil {
+			fatal("diff: %v", err)
+		}
+		if changed {
+			os.Exit(3)
+		}
+		return
+	}
+
 	cfg, err := config.Load()
 	if err != nil {
 		fatal("%v", err)
@@ -36,6 +49,7 @@ func main() {
 		fmt.Printf("dscan v%s by shadow0x0\n", scanner.Version)
 		return
 	}
+	cfg.Output = report.ResolveOutputPath(cfg.Output, time.Now())
 
 	// ── UI setup ──
 	var renderer *ui.UI
@@ -67,9 +81,18 @@ func main() {
 	if renderer != nil {
 		renderer.Close()
 	}
+	if cfg.Opts.Screenshot {
+		if err := modules.CaptureScreenshots(ctx, report.ArtifactDir(cfg.Output), results, cfg.Opts.ChromePath); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: screenshots: %v\n", err)
+		}
+	}
 
 	// ── summaries ──
-	if cfg.Silent {
+	if cfg.Emit != "" {
+		if err := report.Emit(os.Stdout, cfg.Emit, results); err != nil {
+			fatal("emit: %v", err)
+		}
+	} else if cfg.Silent {
 		for _, r := range results {
 			fmt.Printf("%s subs=%d ports=%d live=%d takeovers=%d (%dms)\n",
 				r.Target, len(r.Subdomains), len(r.Ports), len(r.Web),
@@ -90,7 +113,36 @@ func main() {
 		if !cfg.Silent {
 			ui.PrintSaved(files)
 		}
+		if err := report.NotifyWebhook(ctx, cfg.Webhook, report.NewManifest(results)); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: webhook: %v\n", err)
+		}
 	}
+}
+
+func runDiff(args []string) (bool, error) {
+	fs := flag.NewFlagSet("diff", flag.ContinueOnError)
+	output := fs.String("o", "", "write JSON diff")
+	webhook := fs.String("webhook", "", "notification webhook URL")
+	if err := fs.Parse(args); err != nil {
+		return false, err
+	}
+	if fs.NArg() != 2 {
+		return false, fmt.Errorf("usage: dscan diff [-o diff.json] [-webhook URL] OLD NEW")
+	}
+	diff, err := report.ComparePaths(fs.Arg(0), fs.Arg(1))
+	if err != nil {
+		return false, err
+	}
+	fmt.Print(diff.String())
+	if *output != "" {
+		if err := report.WriteDiff(*output, diff); err != nil {
+			return false, err
+		}
+	}
+	if err := report.NotifyWebhook(context.Background(), *webhook, diff); err != nil {
+		return false, err
+	}
+	return diff.Changed, nil
 }
 
 func fatal(format string, args ...any) {

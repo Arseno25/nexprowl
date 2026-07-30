@@ -74,11 +74,11 @@ func (e *Engine) runTarget(ctx context.Context, target string) *Result {
 	start := time.Now()
 	sc := NewScanContext(target, e.opts, e.emit)
 
-	for _, m := range e.modules {
+	for i, m := range e.modules {
 		if ctx.Err() != nil {
 			break
 		}
-		sc.Phase(m.Name())
+		sc.Phase(m.Name(), i+1, len(e.modules))
 		func() {
 			defer func() {
 				if r := recover(); r != nil {

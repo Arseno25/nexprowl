@@ -1,6 +1,6 @@
 # dscan — Per-OS Usage Guide
 
-> dscan v1.0.0 · by shadow0x0
+> dscan v2.0.0 · by shadow0x0
 
 ---
 
@@ -26,6 +26,12 @@ copy bin\dscan-windows-amd64.exe dscan.exe
 .\dscan.exe example.com -o results\out.csv
 .\dscan.exe example.com -o results\out.jsonl
 .\dscan.exe example.com -o results\out.txt
+
+# Screenshot evidence (Chrome/Edge must be installed)
+.\dscan.exe example.com -screenshot
+
+# Compare historical runs
+.\dscan.exe diff -o results\diff.json results\OLD results\NEW
 ```
 
 ### CMD
@@ -54,6 +60,9 @@ nohup dscan -l targets.txt -T 10 -o results/ > scan.log 2>&1 &
 # Pipe JSONL into jq
 dscan -l targets.txt -passive -silent -o results/subs.jsonl
 cat results/subs.jsonl | jq -r '.subdomains[].host' | sort -u
+
+# Native pipeline mode
+cat targets.txt | dscan -silent -emit urls
 ```
 
 ---

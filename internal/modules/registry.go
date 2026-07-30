@@ -9,10 +9,12 @@ import "dscan/internal/scanner"
 func All() []scanner.Module {
 	return []scanner.Module{
 		DNS{},
+		TLSSeed{},
 		Subdomain{},
 		Ports{},
-		HTTP{},
 		VHost{},
+		HTTP{},
+		Crawl{},
 		TLS{},
 		Takeover{},
 	}

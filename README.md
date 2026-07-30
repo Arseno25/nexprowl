@@ -51,15 +51,16 @@ chmod +x bin/dscan-darwin-arm64   # Apple Silicon
 
 | Module | Capabilities |
 |--------|--------------|
-| `dns` | Parallel A/AAAA/MX/NS/TXT/CNAME lookups · null-MX aware · **AXFR zone transfer** (raw DNS wire protocol, automatic hostname extraction) |
-| `sub` | 5 keyless passive sources (crt.sh, CertSpotter, OTX, HackerTarget, Anubis) · 355-word bruteforce · 3-probe wildcard DNS detection + filtering · CNAME resolution |
-| `ports` | Worker-pool TCP connect scan · service naming · **banner grabbing** (SSH/FTP/MySQL/Redis/...) |
-| `http` | HTTPS→HTTP probing of the target **+ every live subdomain** · status/title/server/redirect · 70 tech signatures · passive **+ active** WAF detection |
+| `dns` | A/AAAA/MX/NS/TXT/CAA/SOA/SRV/PTR · SPF/DMARC · ASN ownership · null-MX · **AXFR** |
+| `sub` | 5 keyless + optional keyed passive sources · TLS SANs · bruteforce · wildcard filtering |
+| `ports` | Multi-host/IP TCP connect scan · service naming · **banner grabbing** |
+| `http` | Port-aware HTTP/HTTPS probing · hashes · response timing · tech/WAF/CDN detection |
 | `vhost` | Hidden virtual host discovery · Host-header + **SNI fuzzing** · wildcard-noise size-model filter |
-| `tls` | TLS version · cipher · issuer · **expired-cert flagging** · SANs extraction |
+| `tls` | Multi-endpoint TLS · cipher · issuer · expiry · hostname mismatch · SAN feedback |
 | `takeover` | Dangling CNAME detection · 48 claimable-service fingerprints · NXDOMAIN **+ unclaimed-page body verification** (catches GitHub Pages / Shopify / Heroku, which keep resolving) |
+| `crawl` | Bounded same-scope HTML/JS/robots/sitemap endpoint discovery |
 
-Extras: **custom DNS resolvers** (`-r`, round-robin) · **per-target rate limiting** (`-rate`) · JSON/JSONL/CSV/Markdown/HTML/TXT output · modern animated UI · concurrent multi-target batch mode.
+Extras: run history + `dscan diff` · STDIN/`-emit` pipelines · screenshots via system Chrome · webhook notifications · custom resolvers · rate limiting · JSON/JSONL/CSV/Markdown/HTML/TXT.
 
 ## Usage
 
@@ -115,8 +116,9 @@ https://sub.domain.com/path   ← normalized to sub.domain.com
 
 ## Output
 
-Every scan is saved to `results/` by default. Use `-o` to choose another
-file or directory; missing parent directories are created automatically.
+Every directory-mode scan gets an immutable timestamped run under `results/`.
+Each run contains per-target JSON, summary CSV, HTML, manifest, and plain asset lists.
+`results/latest.txt` points to the newest run.
 
 | Path | Result |
 |------|--------|
@@ -126,16 +128,37 @@ file or directory; missing parent directories are created automatically.
 | `results/out.md` | Markdown report with per-target tables |
 | `results/out.html` | Responsive standalone HTML report |
 | `results/out.txt` | Plain-text summary |
-| `results/` | **Directory mode**: `results/<target>.json` + `summary.csv` |
+| `results/` | **Run history**: `results/<timestamp>/...` + `latest.txt` |
 
 Format override: `-format json|jsonl|csv|md|html|txt`.
+
+Compare two runs (exit code `3` means changes were found):
+
+```bash
+dscan diff -o results/diff.json results/OLD results/NEW
+```
+
+Pipeline mode:
+
+```bash
+cat domains.txt | dscan -silent -emit urls
+dscan example.com -emit endpoints
+```
+
+Optional passive provider keys:
+
+```bash
+export DSCAN_SECURITYTRAILS_KEY=...
+export DSCAN_VIRUSTOTAL_KEY=...
+export DSCAN_SHODAN_KEY=...
+```
 
 ## Flag Reference
 
 | Flag | Default | Description |
 |------|---------|-------------|
 | `-l` | — | target list file |
-| `-m` | all | modules: `dns,sub,ports,http,vhost,tls,takeover` |
+| `-m` | all | modules: `dns,sub,ports,http,vhost,tls,takeover,crawl` |
 | `-p` | `top100` | ports: `top100` · `full` · `80,443` · `1-1024` |
 | `-t` | 300 | workers per module |
 | `-T` | 5 | concurrent targets (batch) |
@@ -145,6 +168,15 @@ Format override: `-format json|jsonl|csv|md|html|txt`.
 | `-rate` | 0 (∞) | max ops/sec per target |
 | `-passive` | false | skip bruteforce |
 | `-probe-subs` | true | HTTP-probe discovered subdomains |
+| `-scan-all-ips` | false | scan all IPv4/IPv6 addresses |
+| `-ports-subs` | false | port-scan discovered subdomains |
+| `-probe-both` | false | probe both HTTP and HTTPS |
+| `-active` | false | enable intrusive active probes |
+| `-include` / `-exclude` | — | scope additions and exclusions |
+| `-crawl-depth` / `-crawl-max` | `2` / `500` | crawler bounds |
+| `-screenshot` / `-chrome` | false / auto | screenshot with system Chrome |
+| `-emit` | — | machine-friendly stdout findings |
+| `-webhook` | — | notification webhook |
 | `-o` / `-format` | `results/` | output path & format |
 | `-silent` | false | no UI, one line per target |
 | `-no-color` | false | disable colors |
