@@ -2,6 +2,13 @@
 
 <img src="assets/logo.svg" width="700" alt="dscan logo"/>
 
+<p>
+  <img src="https://img.shields.io/badge/Go-1.24-00ADD8?logo=go&logoColor=white&style=flat" alt="Go 1.24"/>
+  <img src="https://img.shields.io/badge/License-MIT-22c55e?style=flat" alt="MIT License"/>
+  <img src="https://img.shields.io/badge/PRs-Welcome-22c55e?style=flat" alt="PRs Welcome"/>
+  <img src="https://img.shields.io/badge/Built%20by-shadow0x0-a855f7?style=flat" alt="shadow0x0"/>
+</p>
+
 </div>
 
 ---
