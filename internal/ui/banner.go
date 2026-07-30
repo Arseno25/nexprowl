@@ -38,13 +38,12 @@ func gradientString(s string) string {
 
 func scanLogo() string {
 	return strings.Join([]string{
-		`        ╭────────────────╮`,
-		`      ╱      ·    ╱        ╲`,
-		`     │        ─── ◉ ───  ·  │       >_ N E X P R O W L`,
-		`      ╲          ╲         ╱           ATTACK SURFACE RECONNAISSANCE`,
-		`        ╰────────────────╯╲`,
-		`                            ╲`,
-		`                             ╲`,
+		`      ┌──────────────────┐`,
+		`      │  · ── + ── ·    │      >_ N E X P R O W L`,
+		`      │  · │  │  │ · ◉  │      ATTACK SURFACE RECONNAISSANCE`,
+		`      │  · │  ◉  │ · ●  │      dns·axfr·sub·ports·http·vhost·tls·takeover`,
+		`      │  · ── + ── ·    │`,
+		`      └──────────────────┘`,
 	}, "\n")
 }
 
