@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net"
+	"net/url"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -28,13 +29,7 @@ type ScanContext struct {
 
 // NewScanContext normalizes the target and prepares state.
 func NewScanContext(rawTarget string, opts *Options, emit Emitter) *ScanContext {
-	t := strings.TrimSpace(strings.ToLower(rawTarget))
-	t = strings.TrimPrefix(t, "http://")
-	t = strings.TrimPrefix(t, "https://")
-	t = strings.TrimRight(t, "/")
-	if i := strings.Index(t, "/"); i >= 0 {
-		t = t[:i]
-	}
+	t, _ := NormalizeTarget(rawTarget)
 	return &ScanContext{
 		Target: t,
 		Opts:   opts,
@@ -91,9 +86,12 @@ func (sc *ScanContext) Log(level Level, format string, args ...any) {
 }
 
 // Phase emits a phase-start event.
-func (sc *ScanContext) Phase(label string) {
+func (sc *ScanContext) Phase(label string, step, total int) {
 	if sc.emit != nil {
-		sc.emit(Event{Type: EvPhase, Target: sc.Target, Level: LevelInfo, Message: label})
+		sc.emit(Event{
+			Type: EvPhase, Target: sc.Target, Level: LevelInfo,
+			Message: label, Step: step, Total: total,
+		})
 	}
 }
 
@@ -117,8 +115,86 @@ func (sc *ScanContext) SetError(format string, args ...any) {
 	if sc.Result.Error == "" {
 		sc.Result.Error = msg
 	}
+	sc.Result.Errors = append(sc.Result.Errors, msg)
 	sc.mu.Unlock()
 	sc.Log(LevelError, "%s", msg)
+}
+
+// InScope reports whether a discovered host is allowed by the target scope.
+func (sc *ScanContext) InScope(host string) bool {
+	host = normalizeHost(host)
+	if host == "" {
+		return false
+	}
+	for _, excluded := range sc.Opts.Exclude {
+		if domainMatch(host, excluded) {
+			return false
+		}
+	}
+	if domainMatch(host, sc.Target) {
+		return true
+	}
+	for _, included := range sc.Opts.Include {
+		if domainMatch(host, included) {
+			return true
+		}
+	}
+	return false
+}
+
+// NormalizeTarget accepts a hostname, IP, or URL and returns its host.
+func NormalizeTarget(raw string) (string, error) {
+	raw = strings.TrimSpace(strings.ToLower(raw))
+	raw = strings.TrimPrefix(raw, "*.")
+	if raw == "" {
+		return "", fmt.Errorf("empty target")
+	}
+	parsed := raw
+	if !strings.Contains(raw, "://") {
+		parsed = "//" + raw
+	}
+	u, err := url.Parse(parsed)
+	if err != nil {
+		return "", fmt.Errorf("invalid target %q", raw)
+	}
+	host := normalizeHost(u.Hostname())
+	if host == "" {
+		return "", fmt.Errorf("invalid target %q", raw)
+	}
+	if ip := net.ParseIP(host); ip != nil {
+		return ip.String(), nil
+	}
+	if len(host) > 253 {
+		return "", fmt.Errorf("target hostname too long")
+	}
+	for _, label := range strings.Split(host, ".") {
+		if label == "" || len(label) > 63 || label[0] == '-' || label[len(label)-1] == '-' {
+			return "", fmt.Errorf("invalid target hostname %q", host)
+		}
+		for _, r := range label {
+			if (r < 'a' || r > 'z') && (r < '0' || r > '9') && r != '-' && r != '_' {
+				return "", fmt.Errorf("invalid target hostname %q", host)
+			}
+		}
+	}
+	return host, nil
+}
+
+func normalizeHost(host string) string {
+	host = strings.TrimSpace(strings.ToLower(host))
+	host = strings.TrimSuffix(host, ".")
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		return strings.Trim(h, "[]")
+	}
+	return strings.Trim(host, "[]")
+}
+
+func domainMatch(host, domain string) bool {
+	host, domain = normalizeHost(host), normalizeHost(domain)
+	if host == "" || domain == "" {
+		return false
+	}
+	return host == domain || strings.HasSuffix(host, "."+domain)
 }
 
 // ─── Wildcard DNS handling ────────────────────────────────

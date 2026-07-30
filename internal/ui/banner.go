@@ -4,13 +4,12 @@ import (
 	"fmt"
 	"runtime"
 	"strings"
-	"time"
 
 	"github.com/pterm/pterm"
 	"github.com/pterm/pterm/putils"
 
-	"dscan/internal/detect"
-	"dscan/internal/scanner"
+	"nexprowl/internal/detect"
+	"nexprowl/internal/scanner"
 )
 
 var (
@@ -18,6 +17,10 @@ var (
 	gradEnd   = pterm.NewRGB(213, 0, 249)   // magenta
 	accent    = pterm.NewRGB(105, 240, 174) // mint
 	dim       = pterm.NewRGB(130, 130, 150) // dim gray
+	info      = pterm.NewRGB(87, 199, 255)  // blue
+	warning   = pterm.NewRGB(255, 195, 77)  // amber
+	danger    = pterm.NewRGB(255, 95, 109)  // red
+	phase     = pterm.NewRGB(189, 147, 249) // purple
 )
 
 // gradientString fades text from gradStart to gradEnd, rune by rune.
@@ -36,7 +39,7 @@ func gradientString(s string) string {
 
 // Banner renders the gradient ASCII banner + metadata line.
 func Banner() {
-	word := "DSCAN"
+	word := "NEXPROWL"
 	letters := make([]pterm.Letters, 0, len(word))
 	n := float32(len(word))
 	for i, ch := range word {
@@ -56,30 +59,12 @@ func Banner() {
 	pterm.DefaultCenter.Println(dim.Sprint(strings.Repeat("─", 64)))
 }
 
-// Boot plays the startup animation: a spinner stepping through init stages.
+// Boot confirms readiness without adding artificial startup delay.
 func Boot() {
-	steps := []string{
-		"loading detection signatures",
-		"initializing worker engine",
-		"priming dns resolvers",
-		"engine ready",
-	}
-	sp, _ := pterm.DefaultSpinner.
-		WithRemoveWhenDone(true).
-		WithDelay(110 * time.Millisecond).
-		Start(steps[0] + dim.Sprint(" …"))
-	for _, s := range steps[1:] {
-		time.Sleep(140 * time.Millisecond)
-		sp.UpdateText(s + dim.Sprint(" …"))
-	}
-	time.Sleep(120 * time.Millisecond)
-	sp.Success(accent.Sprint("engine ready"))
-	// let pterm's spinner goroutine flush its final frame before the
-	// event renderer takes over stdout
-	time.Sleep(150 * time.Millisecond)
+	pterm.Println(" " + badge("READY", accent) + dim.Sprint(" engine initialized"))
 }
 
-// ConfigLine prints the run configuration as a compact gradient line.
+// ConfigLine prints the run configuration as a compact, scannable line.
 func ConfigLine(targets int, modules string, workers, concurrency, timeoutSec, rate, resolvers int) {
 	rateStr := "∞"
 	if rate > 0 {
@@ -89,8 +74,8 @@ func ConfigLine(targets int, modules string, workers, concurrency, timeoutSec, r
 	if resolvers > 0 {
 		resStr = fmt.Sprintf("%d custom", resolvers)
 	}
-	line := fmt.Sprintf(" targets %d · modules %s · workers %d · concurrency %d · timeout %ds · rate %s · dns %s",
+	line := fmt.Sprintf("targets %d  │  modules %s  │  workers %d  │  concurrent %d  │  timeout %ds  │  rate %s  │  dns %s",
 		targets, modules, workers, concurrency, timeoutSec, rateStr, resStr)
-	pterm.Println(dim.Sprint(" ┌ ") + gradientString(line))
+	pterm.Println(" " + badge("RUN", info) + " " + dim.Sprint(line))
 	pterm.Println()
 }

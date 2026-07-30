@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"dscan/internal/detect"
-	"dscan/internal/scanner"
+	"nexprowl/internal/detect"
+	"nexprowl/internal/scanner"
 )
 
 // VHost discovers virtual hosts on the target IP via Host-header /
@@ -122,7 +122,7 @@ func (VHost) Run(ctx context.Context, sc *scanner.ScanContext) error {
 				if model.isNoise(host, res.status, res.size) {
 					continue
 				}
-				vh := scanner.VHost{Host: host, Status: res.status, Size: int64(res.size), Title: res.title}
+				vh := scanner.VHost{Host: host, Scheme: scheme, Status: res.status, Size: int64(res.size), Title: res.title}
 				mu.Lock()
 				sc.Result.VHosts = append(sc.Result.VHosts, vh)
 				mu.Unlock()
@@ -202,7 +202,7 @@ func probeVHost(ctx context.Context, client *http.Client, ip, scheme, hostHeader
 		return vhostResult{}
 	}
 	req.Host = hostHeader // Host-header routing
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) dscan/1.0")
+	req.Header.Set("User-Agent", "Mozilla/5.0 NexProwl/"+scanner.Version)
 	req.Header.Set("Accept", "text/html,*/*;q=0.8")
 	req.Header.Set("Connection", "close")
 

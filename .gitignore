@@ -3,6 +3,9 @@ bin/
 dscan.exe
 dscan
 dscan-*
+nexprowl.exe
+nexprowl
+nexprowl-*
 *.test
 *.out
 *~

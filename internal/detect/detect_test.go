@@ -84,3 +84,29 @@ func TestWAFAndCDN(t *testing.T) {
 		t.Error("plain nginx must not be flagged as a WAF")
 	}
 }
+
+func TestTechnologyServicesAndSignatureCounts(t *testing.T) {
+	got := Tech(
+		"Server: nginx\nX-Powered-By: PHP/8.3\n",
+		`<script src="/wp-content/app.js"></script>`,
+	)
+	joined := strings.Join(got, ",")
+	for _, want := range []string{"Nginx", "PHP", "WordPress"} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("Tech = %v, missing %s", got, want)
+		}
+	}
+	if got := ServiceName(443); got != "https" {
+		t.Errorf("ServiceName(443) = %q", got)
+	}
+	if ServiceName(65000) != "" {
+		t.Error("unknown port received a service name")
+	}
+	if !WantsBanner(22) || WantsBanner(443) {
+		t.Error("banner-port classification is inconsistent")
+	}
+	tech, waf, takeover := SignatureCounts()
+	if tech == 0 || waf == 0 || takeover == 0 {
+		t.Fatalf("empty signature database: tech=%d waf=%d takeover=%d", tech, waf, takeover)
+	}
+}

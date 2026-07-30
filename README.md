@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/logo.svg" width="700" alt="dscan logo"/>
+<img src="assets/logo.svg" width="700" alt="NexProwl logo"/>
 
 <p>
   <img src="https://img.shields.io/badge/Go-1.24-00ADD8?logo=go&logoColor=white&style=flat" alt="Go 1.24"/>
@@ -13,36 +13,29 @@
 
 ---
 
-## Quick Install
+## Install from source
 
-### Clone & Build (Go required)
+NexProwl is distributed as source. Clone it and build it locally with Go 1.24+:
 
 ```bash
-git clone https://github.com/Arseno25/dscan.git
-cd dscan
-go build -ldflags="-s -w" -o dscan .
-sudo mv dscan /usr/local/bin/   # Linux/macOS, or keep it local
+git clone https://github.com/Arseno25/dscan.git NexProwl
+cd NexProwl
 ```
 
-### Download pre-built binary
+Windows PowerShell:
 
-Grab the right binary from [`bin/`](bin/) for your platform, then:
-
-**Windows:**
 ```powershell
-.\dscan-windows-amd64.exe example.com
+go build -trimpath -ldflags="-s -w" -o nexprowl.exe .
+.\nexprowl.exe --help
 ```
 
-**Linux:**
-```bash
-chmod +x bin/dscan-linux-amd64
-./bin/dscan-linux-amd64 example.com
-```
+Linux/macOS:
 
-**macOS:**
 ```bash
-chmod +x bin/dscan-darwin-arm64   # Apple Silicon
-./bin/dscan-darwin-arm64 example.com
+go build -trimpath -ldflags="-s -w" -o nexprowl .
+chmod +x nexprowl
+sudo mv nexprowl /usr/local/bin/
+nexprowl --help
 ```
 
 ---
@@ -51,48 +44,49 @@ chmod +x bin/dscan-darwin-arm64   # Apple Silicon
 
 | Module | Capabilities |
 |--------|--------------|
-| `dns` | Parallel A/AAAA/MX/NS/TXT/CNAME lookups · null-MX aware · **AXFR zone transfer** (raw DNS wire protocol, automatic hostname extraction) |
-| `sub` | 5 keyless passive sources (crt.sh, CertSpotter, OTX, HackerTarget, Anubis) · 355-word bruteforce · 3-probe wildcard DNS detection + filtering · CNAME resolution |
-| `ports` | Worker-pool TCP connect scan · service naming · **banner grabbing** (SSH/FTP/MySQL/Redis/...) |
-| `http` | HTTPS→HTTP probing of the target **+ every live subdomain** · status/title/server/redirect · 70 tech signatures · passive **+ active** WAF detection |
+| `dns` | A/AAAA/MX/NS/TXT/CAA/SOA/SRV/PTR · SPF/DMARC · ASN ownership · null-MX · **AXFR** |
+| `sub` | 5 keyless + optional keyed passive sources · TLS SANs · bruteforce · wildcard filtering |
+| `ports` | Multi-host/IP TCP connect scan · service naming · **banner grabbing** |
+| `http` | Port-aware HTTP/HTTPS probing · hashes · response timing · tech/WAF/CDN detection |
 | `vhost` | Hidden virtual host discovery · Host-header + **SNI fuzzing** · wildcard-noise size-model filter |
-| `tls` | TLS version · cipher · issuer · **expired-cert flagging** · SANs extraction |
+| `tls` | Multi-endpoint TLS · cipher · issuer · expiry · hostname mismatch · SAN feedback |
 | `takeover` | Dangling CNAME detection · 48 claimable-service fingerprints · NXDOMAIN **+ unclaimed-page body verification** (catches GitHub Pages / Shopify / Heroku, which keep resolving) |
+| `crawl` | Bounded same-scope HTML/JS/robots/sitemap endpoint discovery |
 
-Extras: **custom DNS resolvers** (`-r`, round-robin) · **per-target rate limiting** (`-rate`) · JSON/JSONL/CSV/Markdown/HTML/TXT output · modern animated UI · concurrent multi-target batch mode.
+Extras: run history + `nexprowl diff` · STDIN/`-emit` pipelines · screenshots via system Chrome · webhook notifications · custom resolvers · rate limiting · JSON/JSONL/CSV/Markdown/HTML/TXT.
 
 ## Usage
 
 ```bash
 # Full help
-dscan --help
+nexprowl --help
 
 # Full scan, single target (all modules + animated UI)
-dscan example.com
+nexprowl example.com
 
-# Batch — 10 concurrent targets, per-target files + summary.csv
-dscan -l targets.txt -T 10 -o results/
+# Batch — 10 concurrent targets, automatically saved to results/
+nexprowl -l targets.txt -T 10
 
 # Subdomains + HTTP only, 500 workers
-dscan example.com -m sub,http -t 500
+nexprowl example.com -m sub,http -t 500
 
 # Wide port scan
-dscan example.com -p 1-10000 -t 1000
+nexprowl example.com -p 1-10000 -t 1000
 
 # DNS records + zone transfer attempt
-dscan example.com -m dns
+nexprowl example.com -m dns
 
 # Hunt hidden virtual hosts
-dscan example.com -m dns,vhost
+nexprowl example.com -m dns,vhost
 
 # Stealth: custom resolvers + 50 ops/s rate limit
-dscan example.com -r resolvers.txt -rate 50
+nexprowl example.com -r resolvers.txt -rate 50
 
 # Passive only, pipe-ready for jq/nuclei
-dscan -l targets.txt -passive -silent -o subs.jsonl
+nexprowl -l targets.txt -passive -silent -o results/subs.jsonl
 
 # Markdown report for bug bounty notes
-dscan -l targets.txt -o report.md
+nexprowl -l targets.txt -o results/report.md
 ```
 
 ### `targets.txt` format
@@ -115,26 +109,49 @@ https://sub.domain.com/path   ← normalized to sub.domain.com
 
 ## Output
 
-`-o` auto-detects the mode from the path:
+Every directory-mode scan gets an immutable timestamped run under `results/`.
+Each run contains per-target JSON, summary CSV, HTML, manifest, and plain asset lists.
+`results/latest.txt` points to the newest run.
 
 | Path | Result |
 |------|--------|
-| `out.json` | Combined pretty JSON |
-| `out.jsonl` | JSONL — one result per line, pipe-ready for `jq`/`nuclei` |
-| `out.csv` | Flattened CSV (target, host, status, tech, waf, ports) |
-| `out.md` | Markdown report with per-target tables |
-| `out.html` | Responsive standalone HTML report |
-| `out.txt` | Plain-text summary |
-| `results/` | **Directory mode**: `results/<target>.json` + `summary.csv` |
+| `results/out.json` | Combined pretty JSON |
+| `results/out.jsonl` | JSONL — one result per line, pipe-ready for `jq`/`nuclei` |
+| `results/out.csv` | Flattened CSV (target, host, status, tech, waf, ports) |
+| `results/out.md` | Markdown report with per-target tables |
+| `results/out.html` | Responsive standalone HTML report |
+| `results/out.txt` | Plain-text summary |
+| `results/` | **Run history**: `results/<timestamp>/...` + `latest.txt` |
 
 Format override: `-format json|jsonl|csv|md|html|txt`.
+
+Compare two runs (exit code `3` means changes were found):
+
+```bash
+nexprowl diff -o results/diff.json results/OLD results/NEW
+```
+
+Pipeline mode:
+
+```bash
+cat domains.txt | nexprowl -silent -emit urls
+nexprowl example.com -emit endpoints
+```
+
+Optional passive provider keys:
+
+```bash
+export NEXPROWL_SECURITYTRAILS_KEY=...
+export NEXPROWL_VIRUSTOTAL_KEY=...
+export NEXPROWL_SHODAN_KEY=...
+```
 
 ## Flag Reference
 
 | Flag | Default | Description |
 |------|---------|-------------|
 | `-l` | — | target list file |
-| `-m` | all | modules: `dns,sub,ports,http,vhost,tls,takeover` |
+| `-m` | all | modules: `dns,sub,ports,http,vhost,tls,takeover,crawl` |
 | `-p` | `top100` | ports: `top100` · `full` · `80,443` · `1-1024` |
 | `-t` | 300 | workers per module |
 | `-T` | 5 | concurrent targets (batch) |
@@ -144,7 +161,16 @@ Format override: `-format json|jsonl|csv|md|html|txt`.
 | `-rate` | 0 (∞) | max ops/sec per target |
 | `-passive` | false | skip bruteforce |
 | `-probe-subs` | true | HTTP-probe discovered subdomains |
-| `-o` / `-format` | — | output path & format |
+| `-scan-all-ips` | false | scan all IPv4/IPv6 addresses |
+| `-ports-subs` | false | port-scan discovered subdomains |
+| `-probe-both` | false | probe both HTTP and HTTPS |
+| `-active` | false | enable intrusive active probes |
+| `-include` / `-exclude` | — | scope additions and exclusions |
+| `-crawl-depth` / `-crawl-max` | `2` / `500` | crawler bounds |
+| `-screenshot` / `-chrome` | false / auto | screenshot with system Chrome |
+| `-emit` | — | machine-friendly stdout findings |
+| `-webhook` | — | notification webhook |
+| `-o` / `-format` | `results/` | output path & format |
 | `-silent` | false | no UI, one line per target |
 | `-no-color` | false | disable colors |
 | `-h`, `--help` | — | full help |
@@ -159,8 +185,8 @@ PRs welcome. New signatures and passive sources are the easiest place to start.
 ### Setup
 
 ```bash
-git clone https://github.com/Arseno25/dscan.git
-cd dscan
+git clone https://github.com/Arseno25/dscan.git NexProwl
+cd NexProwl
 go build ./...
 go test ./...
 ```
@@ -170,9 +196,10 @@ Go 1.24+. The only direct dependency is [`pterm`](https://github.com/pterm/pterm
 Before opening a PR:
 
 ```bash
-gofmt -l .        # must print nothing
+gofmt -l .                              # must print nothing
 go vet ./...
-go test ./...
+go test -count=1 ./...
+go test -coverprofile=coverage.out ./... # project floor: 70%
 ```
 
 ### Project layout

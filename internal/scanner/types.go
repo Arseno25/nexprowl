@@ -4,7 +4,7 @@ package scanner
 import "time"
 
 // Version of the tool.
-const Version = "1.0.0"
+const Version = "2.1.0"
 
 // Options configures a scan run.
 type Options struct {
@@ -18,6 +18,17 @@ type Options struct {
 	ProbeSubs   bool
 	Resolvers   []string // custom DNS servers (host:port); empty = system
 	Rate        int      // max network ops/sec per target; 0 = unlimited
+	Include     []string
+	Exclude     []string
+	MaxHosts    int
+	ScanAllIPs  bool
+	PortsSubs   bool
+	ProbeBoth   bool
+	Active      bool
+	CrawlDepth  int
+	CrawlMax    int
+	Screenshot  bool
+	ChromePath  string
 }
 
 // HasModule reports whether a module is enabled.
@@ -31,19 +42,24 @@ func (o *Options) HasModule(name string) bool {
 // ─── Result model ─────────────────────────────────────────
 
 type Result struct {
-	Target       string        `json:"target"`
-	ScanTime     string        `json:"scan_time"`
-	DurationMs   int64         `json:"duration_ms"`
-	Error        string        `json:"error,omitempty"`
-	IPs          []string      `json:"ips,omitempty"`
-	DNS          *DNSResult    `json:"dns,omitempty"`
-	ZoneTransfer []AXFREntry   `json:"zone_transfer,omitempty"`
-	Subdomains   []Subdomain   `json:"subdomains,omitempty"`
-	Ports        []Port        `json:"ports,omitempty"`
-	Web          []WebResult   `json:"web,omitempty"`
-	VHosts       []VHost       `json:"vhosts,omitempty"`
-	TLS          *TLSResult    `json:"tls,omitempty"`
-	Takeovers    []TakeoverHit `json:"takeovers,omitempty"`
+	Target       string         `json:"target"`
+	ScanTime     string         `json:"scan_time"`
+	DurationMs   int64          `json:"duration_ms"`
+	Error        string         `json:"error,omitempty"`
+	IPs          []string       `json:"ips,omitempty"`
+	DNS          *DNSResult     `json:"dns,omitempty"`
+	ZoneTransfer []AXFREntry    `json:"zone_transfer,omitempty"`
+	Subdomains   []Subdomain    `json:"subdomains,omitempty"`
+	Ports        []Port         `json:"ports,omitempty"`
+	Web          []WebResult    `json:"web,omitempty"`
+	VHosts       []VHost        `json:"vhosts,omitempty"`
+	TLS          *TLSResult     `json:"tls,omitempty"`
+	TLSHosts     []TLSResult    `json:"tls_hosts,omitempty"`
+	Takeovers    []TakeoverHit  `json:"takeovers,omitempty"`
+	Endpoints    []Endpoint     `json:"endpoints,omitempty"`
+	Sources      []SourceStatus `json:"sources,omitempty"`
+	Networks     []NetworkInfo  `json:"networks,omitempty"`
+	Errors       []string       `json:"errors,omitempty"`
 }
 
 // AXFREntry records a successful zone transfer from one nameserver.
@@ -55,6 +71,7 @@ type AXFREntry struct {
 // VHost is a virtual host discovered via Host-header probing.
 type VHost struct {
 	Host   string `json:"host"`
+	Scheme string `json:"scheme,omitempty"`
 	Status int    `json:"status"`
 	Size   int64  `json:"size"`
 	Title  string `json:"title,omitempty"`
@@ -66,6 +83,12 @@ type DNSResult struct {
 	MX    []string `json:"mx,omitempty"`
 	NS    []string `json:"ns,omitempty"`
 	TXT   []string `json:"txt,omitempty"`
+	CAA   []string `json:"caa,omitempty"`
+	SOA   []string `json:"soa,omitempty"`
+	SRV   []string `json:"srv,omitempty"`
+	PTR   []string `json:"ptr,omitempty"`
+	SPF   []string `json:"spf,omitempty"`
+	DMARC []string `json:"dmarc,omitempty"`
 	CNAME string   `json:"cname,omitempty"`
 }
 
@@ -77,6 +100,8 @@ type Subdomain struct {
 }
 
 type Port struct {
+	Host    string `json:"host,omitempty"`
+	IP      string `json:"ip,omitempty"`
 	Port    int    `json:"port"`
 	Service string `json:"service,omitempty"`
 	Banner  string `json:"banner,omitempty"`
@@ -84,18 +109,29 @@ type Port struct {
 
 type WebResult struct {
 	URL          string   `json:"url"`
+	Host         string   `json:"host,omitempty"`
+	IP           string   `json:"ip,omitempty"`
+	Scheme       string   `json:"scheme,omitempty"`
+	Port         int      `json:"port,omitempty"`
 	Status       int      `json:"status"`
 	Title        string   `json:"title,omitempty"`
 	Server       string   `json:"server,omitempty"`
 	PoweredBy    string   `json:"powered_by,omitempty"`
 	Redirect     string   `json:"redirect,omitempty"`
 	ContentLen   int64    `json:"content_length,omitempty"`
+	ContentType  string   `json:"content_type,omitempty"`
+	ResponseMs   int64    `json:"response_ms,omitempty"`
+	BodyHash     string   `json:"body_sha256,omitempty"`
+	FaviconHash  string   `json:"favicon_sha256,omitempty"`
+	Screenshot   string   `json:"screenshot,omitempty"`
 	Technologies []string `json:"technologies,omitempty"`
 	WAF          string   `json:"waf,omitempty"`
 	CDN          string   `json:"cdn,omitempty"`
 }
 
 type TLSResult struct {
+	Host      string   `json:"host,omitempty"`
+	Port      int      `json:"port,omitempty"`
 	Issuer    string   `json:"issuer,omitempty"`
 	Subject   string   `json:"subject,omitempty"`
 	ValidFrom string   `json:"valid_from,omitempty"`
@@ -104,6 +140,28 @@ type TLSResult struct {
 	Cipher    string   `json:"cipher,omitempty"`
 	SANs      []string `json:"sans,omitempty"`
 	Expired   bool     `json:"expired,omitempty"`
+	Mismatch  bool     `json:"hostname_mismatch,omitempty"`
+	DaysLeft  int      `json:"days_left,omitempty"`
+}
+
+type Endpoint struct {
+	URL    string `json:"url"`
+	Source string `json:"source,omitempty"`
+	Depth  int    `json:"depth,omitempty"`
+}
+
+type SourceStatus struct {
+	Name       string `json:"name"`
+	Found      int    `json:"found"`
+	DurationMs int64  `json:"duration_ms"`
+	Error      string `json:"error,omitempty"`
+}
+
+type NetworkInfo struct {
+	IP     string `json:"ip"`
+	ASN    string `json:"asn,omitempty"`
+	Prefix string `json:"prefix,omitempty"`
+	Owner  string `json:"owner,omitempty"`
 }
 
 type TakeoverHit struct {
@@ -139,6 +197,8 @@ type Event struct {
 	Level   Level
 	Kind    string // finding kind for EvFound
 	Message string
+	Step    int // current module step for EvPhase
+	Total   int // total active module steps for EvPhase
 }
 
 // Emitter receives scan events. May be nil (silent mode).

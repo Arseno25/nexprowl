@@ -5,21 +5,21 @@ import (
 
 	"github.com/pterm/pterm"
 
-	"dscan/internal/scanner"
+	"nexprowl/internal/scanner"
 )
 
 // PrintHelp renders the full structured help screen.
 func PrintHelp() {
 	pterm.Println()
 	pterm.DefaultCenter.Println(
-		gradientString("d s c a n") +
+		gradientString("N e x P r o w l") +
 			dim.Sprintf("  v%s — all-in-one domain reconnaissance", scanner.Version))
 	pterm.DefaultCenter.Println(dim.Sprint("by shadow0x0"))
 	pterm.Println()
 
 	section("USAGE")
-	row(gradientString("dscan [flags] <target.com>"), "")
-	row(gradientString("dscan -l targets.txt [flags]"), "")
+	row(gradientString("nexprowl [flags] <target.com>"), "")
+	row(gradientString("nexprowl -l targets.txt [flags]"), "")
 
 	section("TARGETS")
 	row("-l FILE", "file with target list (one per line, # = comment)")
@@ -32,6 +32,7 @@ func PrintHelp() {
 	row("vhost", "hidden virtual host discovery (Host-header & SNI fuzzing)")
 	row("tls", "certificate info · expiry check · SANs extraction")
 	row("takeover", "dangling CNAME → claimable service detection (50 services)")
+	row("crawl", "bounded in-scope HTML/JS/robots/sitemap endpoint discovery")
 
 	section("SCAN TUNING")
 	row("-p SPEC", "ports: top100 (default) | full | 80,443 | 1-1024")
@@ -45,10 +46,25 @@ func PrintHelp() {
 	row("-timeout N", "network timeout in seconds (default 4)")
 	row("-r FILE", "custom DNS resolvers, round-robin (default: system)")
 	row("-rate N", "max network ops/sec per target (default: unlimited)")
+	row("-scan-all-ips", "port-scan every resolved IPv4/IPv6 address")
+	row("-ports-subs", "port-scan discovered subdomains")
+	row("-probe-both", "probe both HTTP and HTTPS on web ports")
+	row("-active", "enable intrusive checks such as active WAF probing")
+
+	section("SCOPE & DISCOVERY")
+	row("-include DOMAINS", "extra in-scope domains, comma-separated")
+	row("-exclude DOMAINS", "out-of-scope domains, comma-separated")
+	row("-max-hosts N", "maximum discovered hosts per target (default 10000)")
+	row("-crawl-depth N", "maximum crawler depth (default 2)")
+	row("-crawl-max N", "maximum crawled URLs per target (default 500)")
 
 	section("OUTPUT")
-	row("-o PATH", "file (.json/.jsonl/.csv/.md/.html/.txt) or directory")
+	row("-o PATH", "output file or directory (default: results/)")
 	row("-format FMT", "override format: json | jsonl | csv | md | html | txt")
+	row("-emit FIELD", "stdout: subdomains | urls | hostports | ips | endpoints | jsonl")
+	row("-screenshot", "capture live pages with installed Chrome/Chromium")
+	row("-chrome PATH", "custom Chrome/Chromium executable")
+	row("-webhook URL", "POST scan summary to a webhook")
 	row("-silent", "no UI — one summary line per target (script-friendly)")
 	row("-no-color", "disable colored output")
 
@@ -58,16 +74,18 @@ func PrintHelp() {
 
 	section("EXAMPLES")
 	examples([][2]string{
-		{"dscan example.com", "full scan, single target"},
-		{"dscan -l targets.txt -T 10 -o results/", "batch 10 concurrent → per-target files + summary.csv"},
-		{"dscan example.com -m sub,http -t 500", "subdomains + http only, 500 workers"},
-		{"dscan example.com -p 1-10000 -t 1000", "wide port scan"},
-		{"dscan example.com -m dns", "dns records + zone transfer attempt"},
-		{"dscan example.com -m dns,vhost", "hunt hidden virtual hosts"},
-		{"dscan example.com -r resolvers.txt -rate 50", "stealth: custom resolvers + rate limit"},
-		{"dscan -l targets.txt -passive -silent -o subs.jsonl", "passive, pipe-ready for jq/nuclei"},
-		{"dscan -l targets.txt -o report.md", "markdown report for bug bounty notes"},
-		{"dscan example.com -o report.html", "standalone HTML report"},
+		{"nexprowl example.com", "full scan, single target"},
+		{"nexprowl -l targets.txt -T 10", "batch 10 concurrent → results/"},
+		{"nexprowl example.com -m sub,http -t 500", "subdomains + http only, 500 workers"},
+		{"nexprowl example.com -p 1-10000 -t 1000", "wide port scan"},
+		{"nexprowl example.com -m dns", "dns records + zone transfer attempt"},
+		{"nexprowl example.com -m dns,vhost", "hunt hidden virtual hosts"},
+		{"nexprowl example.com -r resolvers.txt -rate 50", "stealth: custom resolvers + rate limit"},
+		{"nexprowl -l targets.txt -passive -silent -o results/subs.jsonl", "passive, pipe-ready for jq/nuclei"},
+		{"nexprowl -l targets.txt -o results/report.md", "markdown report for bug bounty notes"},
+		{"nexprowl example.com -o results/report.html", "standalone HTML report"},
+		{"cat domains.txt | nexprowl -silent -emit urls", "pipeline input and URL output"},
+		{"nexprowl diff results/old results/new", "compare two scan runs"},
 	})
 	pterm.Println()
 }
@@ -82,7 +100,7 @@ func row(flag, desc string) {
 		fmt.Printf("  %s\n", flag)
 		return
 	}
-	fmt.Printf("  %s %s\n", accent.Sprintf("%-14s", flag), dim.Sprint(desc))
+	fmt.Printf("  %s %s\n", accent.Sprintf("%-20s", flag), dim.Sprint(desc))
 }
 
 func examples(items [][2]string) {
