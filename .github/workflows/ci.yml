@@ -13,7 +13,17 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-      - run: go test ./...
-      - run: go vet ./...
-      - run: test -z "$(gofmt -l .)"
-      - run: go build ./...
+      - name: Test with race detector
+        run: go test -count=1 -race -coverprofile=coverage.out ./...
+      - name: Enforce coverage floor
+        shell: bash
+        run: |
+          total="$(go tool cover -func=coverage.out | awk '/^total:/ {gsub("%", "", $3); print $3}')"
+          echo "Total coverage: ${total}%"
+          awk -v total="$total" 'BEGIN { if (total < 70) exit 1 }'
+      - name: Vet
+        run: go vet ./...
+      - name: Format
+        run: test -z "$(gofmt -l .)"
+      - name: Build
+        run: go build ./...

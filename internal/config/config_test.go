@@ -1,6 +1,10 @@
 package config
 
 import (
+	"flag"
+	"io"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -58,4 +62,131 @@ func TestNormalizeResolvers(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("normalizeResolvers = %v, want %v", got, want)
 	}
+}
+
+func TestLoadFullConfiguration(t *testing.T) {
+	dir := t.TempDir()
+	targets := filepath.Join(dir, "targets.txt")
+	wordlist := filepath.Join(dir, "words.txt")
+	resolvers := filepath.Join(dir, "resolvers.txt")
+	if err := os.WriteFile(targets, []byte("https://Example.com/path\napi.example.com\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(wordlist, []byte("admin\napi\nadmin\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(resolvers, []byte("1.1.1.1\n8.8.8.8:5353\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := loadForTest(t,
+		"api.example.com",
+		"-l", targets,
+		"-m", "DNS,http,crawl",
+		"-p", "80,443",
+		"-t", "0",
+		"-T", "0",
+		"-timeout", "0",
+		"-w", wordlist,
+		"-r", resolvers,
+		"-rate", "25",
+		"-include", "extra.test,EXTRA.test",
+		"-exclude", "admin.example.com",
+		"-max-hosts", "0",
+		"-crawl-depth", "-1",
+		"-crawl-max", "0",
+		"-scan-all-ips",
+		"-ports-subs",
+		"-probe-both",
+		"-active",
+		"-passive",
+		"-probe-subs=false",
+		"-screenshot",
+		"-chrome", "chrome",
+		"-o", "custom-results",
+		"-format", "html",
+		"-emit", "urls",
+		"-webhook", " https://hooks.example.test ",
+		"-no-color",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := cfg.Targets, []string{"example.com", "api.example.com"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("targets = %v, want %v", got, want)
+	}
+	if !cfg.Silent || !cfg.NoColor || cfg.Emit != "urls" || cfg.Format != "html" ||
+		cfg.Output != "custom-results" || cfg.Webhook != "https://hooks.example.test" {
+		t.Fatalf("top-level config = %#v", cfg)
+	}
+	opts := cfg.Opts
+	if opts.Workers != 1 || opts.Concurrency != 1 || opts.Timeout.Seconds() != 1 ||
+		opts.MaxHosts != 1 || opts.CrawlDepth != 0 || opts.CrawlMax != 1 {
+		t.Fatalf("clamped options = %#v", opts)
+	}
+	if !opts.ScanAllIPs || !opts.PortsSubs || !opts.ProbeBoth || !opts.Active ||
+		!opts.PassiveOnly || opts.ProbeSubs || !opts.Screenshot || opts.ChromePath != "chrome" {
+		t.Fatalf("boolean options = %#v", opts)
+	}
+	if got, want := opts.Ports, []int{80, 443}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("ports = %v, want %v", got, want)
+	}
+	if got, want := opts.Wordlist, []string{"admin", "api"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("wordlist = %v, want %v", got, want)
+	}
+	if got, want := opts.Resolvers, []string{"1.1.1.1:53", "8.8.8.8:5353"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("resolvers = %v, want %v", got, want)
+	}
+	if got, want := opts.Include, []string{"extra.test"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("include = %v, want %v", got, want)
+	}
+	if !opts.Modules["dns"] || !opts.Modules["http"] || !opts.Modules["crawl"] || len(opts.Modules) != 3 {
+		t.Fatalf("modules = %v", opts.Modules)
+	}
+}
+
+func TestLoadRejectsInvalidConfiguration(t *testing.T) {
+	tests := [][]string{
+		{"-m", "unknown", "example.com"},
+		{"-format", "xml", "example.com"},
+		{"-emit", "cookies", "example.com"},
+		{"-include", "bad host", "example.com"},
+		{"-p", "not-a-port", "example.com"},
+		{"-w", filepath.Join(t.TempDir(), "missing.txt"), "example.com"},
+	}
+	for _, args := range tests {
+		if _, err := loadForTest(t, args...); err == nil {
+			t.Errorf("Load(%v) succeeded, want error", args)
+		}
+	}
+}
+
+func TestLoadLines(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "lines.txt")
+	if err := os.WriteFile(path, []byte(" one \n# ignored\none\ntwo\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	got, err := LoadLines(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"one", "two"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("LoadLines = %v, want %v", got, want)
+	}
+	if _, err := LoadLines(path + ".missing"); err == nil {
+		t.Fatal("LoadLines accepted missing file")
+	}
+}
+
+func loadForTest(t *testing.T, args ...string) (*Config, error) {
+	t.Helper()
+	oldArgs, oldFlags := os.Args, flag.CommandLine
+	flag.CommandLine = flag.NewFlagSet("nexprowl-test", flag.ContinueOnError)
+	flag.CommandLine.SetOutput(io.Discard)
+	os.Args = append([]string{"nexprowl"}, args...)
+	t.Cleanup(func() {
+		os.Args = oldArgs
+		flag.CommandLine = oldFlags
+	})
+	return Load()
 }

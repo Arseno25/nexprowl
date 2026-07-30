@@ -196,9 +196,10 @@ Go 1.24+. The only direct dependency is [`pterm`](https://github.com/pterm/pterm
 Before opening a PR:
 
 ```bash
-gofmt -l .        # must print nothing
+gofmt -l .                              # must print nothing
 go vet ./...
-go test ./...
+go test -count=1 ./...
+go test -coverprofile=coverage.out ./... # project floor: 70%
 ```
 
 ### Project layout

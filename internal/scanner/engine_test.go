@@ -3,6 +3,7 @@ package scanner
 import (
 	"context"
 	"errors"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -71,5 +72,13 @@ func TestEngineEmitsNumberedPhases(t *testing.T) {
 
 	if len(phases) != 2 || phases[0].Step != 1 || phases[1].Step != 2 || phases[1].Total != 2 {
 		t.Fatalf("unexpected phase metadata: %#v", phases)
+	}
+}
+
+func TestUniqueSorted(t *testing.T) {
+	got := UniqueSorted([]string{"b", "a", "b", "c", "a"})
+	want := []string{"a", "b", "c"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("UniqueSorted = %v, want %v", got, want)
 	}
 }

@@ -441,7 +441,7 @@ func resultSignals(r *scanner.Result) string {
 	if len(signals) == 0 {
 		return dim.Sprint("-")
 	}
-	return truncate(strings.Join(signals, ", "), 30)
+	return strings.Join(signals, ", ")
 }
 
 func isTTY() bool {
