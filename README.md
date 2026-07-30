@@ -6,6 +6,40 @@
 
 ---
 
+## Quick Install
+
+### Clone & Build (Go required)
+
+```bash
+git clone https://github.com/Arseno25/dscan.git
+cd dscan
+go build -ldflags="-s -w" -o dscan .
+sudo mv dscan /usr/local/bin/   # Linux/macOS, or keep it local
+```
+
+### Download pre-built binary
+
+Grab the right binary from [`bin/`](bin/) for your platform, then:
+
+**Windows:**
+```powershell
+.\dscan-windows-amd64.exe example.com
+```
+
+**Linux:**
+```bash
+chmod +x bin/dscan-linux-amd64
+./bin/dscan-linux-amd64 example.com
+```
+
+**macOS:**
+```bash
+chmod +x bin/dscan-darwin-arm64   # Apple Silicon
+./bin/dscan-darwin-arm64 example.com
+```
+
+---
+
 ## Features
 
 | Module | Capabilities |
@@ -19,47 +53,6 @@
 | `takeover` | Dangling CNAME detection · 50 claimable-service fingerprints · NXDOMAIN verification |
 
 Extras: **custom DNS resolvers** (`-r`, round-robin) · **per-target rate limiting** (`-rate`) · JSON/JSONL/CSV/Markdown/TXT output · modern animated UI · concurrent multi-target batch mode.
-
-## Install per OS
-
-### Windows (PowerShell)
-
-```powershell
-.\bin\dscan-windows-amd64.exe example.com
-
-# or rename for convenience
-copy bin\dscan-windows-amd64.exe dscan.exe
-.\dscan.exe example.com
-```
-
-### Linux
-
-```bash
-chmod +x bin/dscan-linux-amd64
-./bin/dscan-linux-amd64 example.com
-
-# install system-wide
-sudo cp bin/dscan-linux-amd64 /usr/local/bin/dscan
-dscan example.com
-```
-
-### macOS
-
-```bash
-# Apple Silicon (M1/M2/M3)
-chmod +x bin/dscan-darwin-arm64
-./bin/dscan-darwin-arm64 example.com
-
-# Intel
-chmod +x bin/dscan-darwin-amd64
-./bin/dscan-darwin-amd64 example.com
-
-# if blocked by Gatekeeper
-xattr -d com.apple.quarantine bin/dscan-darwin-arm64
-
-# install system-wide
-sudo cp bin/dscan-darwin-arm64 /usr/local/bin/dscan
-```
 
 ## Usage
 

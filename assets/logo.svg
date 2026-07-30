@@ -27,10 +27,10 @@
   <rect x="1.5" y="1.5" width="877" height="297" rx="22.5" fill="none" stroke="url(#grad)" stroke-opacity="0.35" stroke-width="1.5"/>
 
   <!-- glow behind radar -->
-  <circle cx="170" cy="150" r="130" fill="url(#glow)"/>
+  <circle cx="170" cy="140" r="130" fill="url(#glow)"/>
 
   <!-- radar / recon emblem -->
-  <g transform="translate(170,150)">
+  <g transform="translate(170,140)">
     <circle r="102" fill="none" stroke="url(#grad)" stroke-width="3"/>
     <circle r="72" fill="none" stroke="#223052" stroke-width="2"/>
     <circle r="42" fill="none" stroke="#223052" stroke-width="2"/>
@@ -57,22 +57,19 @@
   </g>
 
   <!-- wordmark -->
-  <text x="330" y="168" font-family="'JetBrains Mono','Fira Code',Consolas,monospace" font-size="86" font-weight="700" letter-spacing="2">
+  <text x="330" y="158" font-family="'JetBrains Mono','Fira Code',Consolas,monospace" font-size="86" font-weight="700" letter-spacing="2">
     <tspan fill="#69F0AE">&gt;_</tspan><tspan fill="url(#gradText)" dx="14">dscan</tspan>
   </text>
 
   <!-- tagline -->
-  <text x="334" y="212" font-family="'JetBrains Mono','Fira Code',Consolas,monospace" font-size="19" letter-spacing="4.5" fill="#8A93B2">ALL-IN-ONE DOMAIN RECONNAISSANCE</text>
+  <text x="334" y="195" font-family="'JetBrains Mono','Fira Code',Consolas,monospace" font-size="19" letter-spacing="4.5" fill="#8A93B2">ALL-IN-ONE DOMAIN RECONNAISSANCE</text>
+
+  <!-- module strip -->
+  <text x="334" y="218" font-family="'JetBrains Mono','Fira Code',Consolas,monospace" font-size="10.5" letter-spacing="0.5" fill="#5A6480">dns·axfr·sub·ports·http·vhost·tls·takeover</text>
 
   <!-- meta chips -->
   <g font-family="'JetBrains Mono','Fira Code',Consolas,monospace" font-size="15">
-    <rect x="334" y="234" width="96" height="30" rx="15" fill="none" stroke="url(#grad)" stroke-width="1.5"/>
-    <text x="382" y="254" text-anchor="middle" fill="#00E5FF">v1.0.0</text>
-
-    <rect x="444" y="234" width="150" height="30" rx="15" fill="none" stroke="#2A3B5F" stroke-width="1.5"/>
-    <text x="519" y="254" text-anchor="middle" fill="#8A93B2">by shadow0x0</text>
+    <rect x="334" y="240" width="150" height="30" rx="15" fill="none" stroke="#2A3B5F" stroke-width="1.5"/>
+    <text x="409" y="260" text-anchor="middle" fill="#8A93B2">by shadow0x0</text>
   </g>
-
-  <!-- module strip -->
-  <text x="334" y="282" font-family="'JetBrains Mono','Fira Code',Consolas,monospace" font-size="11" letter-spacing="1.5" fill="#5A6480">dns · axfr · sub · ports · http · vhost · tls · takeover</text>
 </svg>
