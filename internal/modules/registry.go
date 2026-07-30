@@ -1,7 +1,7 @@
-// Package modules implements the scan capabilities of dscan.
+// Package modules implements the scan capabilities of NexProwl.
 package modules
 
-import "dscan/internal/scanner"
+import "nexprowl/internal/scanner"
 
 // All returns every module in execution order.
 // Order matters: dns feeds subdomain filtering + ports; sub feeds http/takeover;

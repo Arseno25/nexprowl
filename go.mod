@@ -1,4 +1,4 @@
-module dscan
+module nexprowl
 
 go 1.24.0
 

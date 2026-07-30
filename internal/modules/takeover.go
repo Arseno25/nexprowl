@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"dscan/internal/detect"
-	"dscan/internal/scanner"
+	"nexprowl/internal/detect"
+	"nexprowl/internal/scanner"
 )
 
 // takeoverBodyRead caps the body pulled for fingerprint matching. Service
@@ -119,7 +119,7 @@ func fetchBody(ctx context.Context, client *http.Client, host string, sc *scanne
 			cancel()
 			continue
 		}
-		req.Header.Set("User-Agent", "Mozilla/5.0 dscan/"+scanner.Version)
+		req.Header.Set("User-Agent", "Mozilla/5.0 NexProwl/"+scanner.Version)
 		resp, err := client.Do(req)
 		if err != nil {
 			cancel()

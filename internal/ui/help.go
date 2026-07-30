@@ -5,21 +5,21 @@ import (
 
 	"github.com/pterm/pterm"
 
-	"dscan/internal/scanner"
+	"nexprowl/internal/scanner"
 )
 
 // PrintHelp renders the full structured help screen.
 func PrintHelp() {
 	pterm.Println()
 	pterm.DefaultCenter.Println(
-		gradientString("d s c a n") +
+		gradientString("N e x P r o w l") +
 			dim.Sprintf("  v%s — all-in-one domain reconnaissance", scanner.Version))
 	pterm.DefaultCenter.Println(dim.Sprint("by shadow0x0"))
 	pterm.Println()
 
 	section("USAGE")
-	row(gradientString("dscan [flags] <target.com>"), "")
-	row(gradientString("dscan -l targets.txt [flags]"), "")
+	row(gradientString("nexprowl [flags] <target.com>"), "")
+	row(gradientString("nexprowl -l targets.txt [flags]"), "")
 
 	section("TARGETS")
 	row("-l FILE", "file with target list (one per line, # = comment)")
@@ -74,18 +74,18 @@ func PrintHelp() {
 
 	section("EXAMPLES")
 	examples([][2]string{
-		{"dscan example.com", "full scan, single target"},
-		{"dscan -l targets.txt -T 10", "batch 10 concurrent → results/"},
-		{"dscan example.com -m sub,http -t 500", "subdomains + http only, 500 workers"},
-		{"dscan example.com -p 1-10000 -t 1000", "wide port scan"},
-		{"dscan example.com -m dns", "dns records + zone transfer attempt"},
-		{"dscan example.com -m dns,vhost", "hunt hidden virtual hosts"},
-		{"dscan example.com -r resolvers.txt -rate 50", "stealth: custom resolvers + rate limit"},
-		{"dscan -l targets.txt -passive -silent -o results/subs.jsonl", "passive, pipe-ready for jq/nuclei"},
-		{"dscan -l targets.txt -o results/report.md", "markdown report for bug bounty notes"},
-		{"dscan example.com -o results/report.html", "standalone HTML report"},
-		{"cat domains.txt | dscan -silent -emit urls", "pipeline input and URL output"},
-		{"dscan diff results/old results/new", "compare two scan runs"},
+		{"nexprowl example.com", "full scan, single target"},
+		{"nexprowl -l targets.txt -T 10", "batch 10 concurrent → results/"},
+		{"nexprowl example.com -m sub,http -t 500", "subdomains + http only, 500 workers"},
+		{"nexprowl example.com -p 1-10000 -t 1000", "wide port scan"},
+		{"nexprowl example.com -m dns", "dns records + zone transfer attempt"},
+		{"nexprowl example.com -m dns,vhost", "hunt hidden virtual hosts"},
+		{"nexprowl example.com -r resolvers.txt -rate 50", "stealth: custom resolvers + rate limit"},
+		{"nexprowl -l targets.txt -passive -silent -o results/subs.jsonl", "passive, pipe-ready for jq/nuclei"},
+		{"nexprowl -l targets.txt -o results/report.md", "markdown report for bug bounty notes"},
+		{"nexprowl example.com -o results/report.html", "standalone HTML report"},
+		{"cat domains.txt | nexprowl -silent -emit urls", "pipeline input and URL output"},
+		{"nexprowl diff results/old results/new", "compare two scan runs"},
 	})
 	pterm.Println()
 }

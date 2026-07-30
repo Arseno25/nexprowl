@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"dscan/internal/scanner"
+	"nexprowl/internal/scanner"
 )
 
 // Crawl performs a bounded, same-scope crawl over live web services.
@@ -84,7 +84,7 @@ func (Crawl) Run(ctx context.Context, sc *scanner.ScanContext) error {
 		if err != nil {
 			continue
 		}
-		req.Header.Set("User-Agent", "Mozilla/5.0 dscan/"+scanner.Version)
+		req.Header.Set("User-Agent", "Mozilla/5.0 NexProwl/"+scanner.Version)
 		resp, err := client.Do(req)
 		if err != nil {
 			continue

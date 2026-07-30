@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"dscan/internal/scanner"
+	"nexprowl/internal/scanner"
 )
 
 // DNS enumerates A, AAAA, MX, NS, TXT, CNAME in parallel

@@ -4,7 +4,7 @@ package scanner
 import "time"
 
 // Version of the tool.
-const Version = "2.0.0"
+const Version = "2.1.0"
 
 // Options configures a scan run.
 type Options struct {

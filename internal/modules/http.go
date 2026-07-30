@@ -15,8 +15,8 @@ import (
 	"sync"
 	"time"
 
-	"dscan/internal/detect"
-	"dscan/internal/scanner"
+	"nexprowl/internal/detect"
+	"nexprowl/internal/scanner"
 )
 
 const maxBodyRead = 512 << 10 // 512KB — enough for title + tech signatures
@@ -309,14 +309,14 @@ func faviconHash(ctx context.Context, client *http.Client, rawURL string, sc *sc
 // activeWAFProbe sends a malicious payload; a blocked response or a block
 // page indicates a WAF even when headers reveal nothing (wafw00f active).
 func activeWAFProbe(ctx context.Context, client *http.Client, baseURL string) string {
-	payload := baseURL + "/?dscan=%3Cscript%3Ealert(1)%3C/script%3E%20AND%201=1%20UNION%20SELECT%20null--"
+	payload := baseURL + "/?nexprowl=%3Cscript%3Ealert(1)%3C/script%3E%20AND%201=1%20UNION%20SELECT%20null--"
 	c, cancel := context.WithTimeout(ctx, 8*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(c, http.MethodGet, payload, nil)
 	if err != nil {
 		return ""
 	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 dscan/"+scanner.Version)
+	req.Header.Set("User-Agent", "Mozilla/5.0 NexProwl/"+scanner.Version)
 	resp, err := client.Do(req)
 	if err != nil {
 		return ""

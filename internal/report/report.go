@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"dscan/internal/scanner"
+	"nexprowl/internal/scanner"
 )
 
 // Format is an output format identifier.
@@ -255,7 +255,7 @@ func writeCSV(path string, results []*scanner.Result) error {
 
 func writeMarkdown(path string, results []*scanner.Result) error {
 	var b strings.Builder
-	b.WriteString("# dscan recon report\n\n")
+	b.WriteString("# NexProwl recon report\n\n")
 
 	totalSubs, totalPorts, totalLive, totalTakeovers := 0, 0, 0, 0
 	for _, r := range results {

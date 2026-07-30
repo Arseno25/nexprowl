@@ -1,4 +1,4 @@
-// dscan — all-in-one domain reconnaissance tool.
+// NexProwl — all-in-one domain reconnaissance tool.
 //
 // Combines techniques from subfinder, gobuster, rustscan, httpx,
 // wappalyzer, wafw00f, dnsrecon and subjack into one fast binary.
@@ -15,11 +15,11 @@ import (
 	"syscall"
 	"time"
 
-	"dscan/internal/config"
-	"dscan/internal/modules"
-	"dscan/internal/report"
-	"dscan/internal/scanner"
-	"dscan/internal/ui"
+	"nexprowl/internal/config"
+	"nexprowl/internal/modules"
+	"nexprowl/internal/report"
+	"nexprowl/internal/scanner"
+	"nexprowl/internal/ui"
 )
 
 func main() {
@@ -46,7 +46,7 @@ func main() {
 		return
 	}
 	if cfg.ShowVer {
-		fmt.Printf("dscan v%s by shadow0x0\n", scanner.Version)
+		fmt.Printf("NexProwl v%s by shadow0x0\n", scanner.Version)
 		return
 	}
 	cfg.Output = report.ResolveOutputPath(cfg.Output, time.Now())
@@ -127,7 +127,7 @@ func runDiff(args []string) (bool, error) {
 		return false, err
 	}
 	if fs.NArg() != 2 {
-		return false, fmt.Errorf("usage: dscan diff [-o diff.json] [-webhook URL] OLD NEW")
+		return false, fmt.Errorf("usage: nexprowl diff [-o diff.json] [-webhook URL] OLD NEW")
 	}
 	diff, err := report.ComparePaths(fs.Arg(0), fs.Arg(1))
 	if err != nil {

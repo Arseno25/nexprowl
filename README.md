@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/logo.svg" width="700" alt="dscan logo"/>
+<img src="assets/logo.svg" width="700" alt="NexProwl logo"/>
 
 <p>
   <img src="https://img.shields.io/badge/Go-1.24-00ADD8?logo=go&logoColor=white&style=flat" alt="Go 1.24"/>
@@ -13,36 +13,29 @@
 
 ---
 
-## Quick Install
+## Install from source
 
-### Clone & Build (Go required)
+NexProwl is distributed as source. Clone it and build it locally with Go 1.24+:
 
 ```bash
-git clone https://github.com/Arseno25/dscan.git
-cd dscan
-go build -ldflags="-s -w" -o dscan .
-sudo mv dscan /usr/local/bin/   # Linux/macOS, or keep it local
+git clone https://github.com/Arseno25/dscan.git NexProwl
+cd NexProwl
 ```
 
-### Download pre-built binary
+Windows PowerShell:
 
-Grab the right binary from [`bin/`](bin/) for your platform, then:
-
-**Windows:**
 ```powershell
-.\dscan-windows-amd64.exe example.com
+go build -trimpath -ldflags="-s -w" -o nexprowl.exe .
+.\nexprowl.exe --help
 ```
 
-**Linux:**
-```bash
-chmod +x bin/dscan-linux-amd64
-./bin/dscan-linux-amd64 example.com
-```
+Linux/macOS:
 
-**macOS:**
 ```bash
-chmod +x bin/dscan-darwin-arm64   # Apple Silicon
-./bin/dscan-darwin-arm64 example.com
+go build -trimpath -ldflags="-s -w" -o nexprowl .
+chmod +x nexprowl
+sudo mv nexprowl /usr/local/bin/
+nexprowl --help
 ```
 
 ---
@@ -60,40 +53,40 @@ chmod +x bin/dscan-darwin-arm64   # Apple Silicon
 | `takeover` | Dangling CNAME detection · 48 claimable-service fingerprints · NXDOMAIN **+ unclaimed-page body verification** (catches GitHub Pages / Shopify / Heroku, which keep resolving) |
 | `crawl` | Bounded same-scope HTML/JS/robots/sitemap endpoint discovery |
 
-Extras: run history + `dscan diff` · STDIN/`-emit` pipelines · screenshots via system Chrome · webhook notifications · custom resolvers · rate limiting · JSON/JSONL/CSV/Markdown/HTML/TXT.
+Extras: run history + `nexprowl diff` · STDIN/`-emit` pipelines · screenshots via system Chrome · webhook notifications · custom resolvers · rate limiting · JSON/JSONL/CSV/Markdown/HTML/TXT.
 
 ## Usage
 
 ```bash
 # Full help
-dscan --help
+nexprowl --help
 
 # Full scan, single target (all modules + animated UI)
-dscan example.com
+nexprowl example.com
 
 # Batch — 10 concurrent targets, automatically saved to results/
-dscan -l targets.txt -T 10
+nexprowl -l targets.txt -T 10
 
 # Subdomains + HTTP only, 500 workers
-dscan example.com -m sub,http -t 500
+nexprowl example.com -m sub,http -t 500
 
 # Wide port scan
-dscan example.com -p 1-10000 -t 1000
+nexprowl example.com -p 1-10000 -t 1000
 
 # DNS records + zone transfer attempt
-dscan example.com -m dns
+nexprowl example.com -m dns
 
 # Hunt hidden virtual hosts
-dscan example.com -m dns,vhost
+nexprowl example.com -m dns,vhost
 
 # Stealth: custom resolvers + 50 ops/s rate limit
-dscan example.com -r resolvers.txt -rate 50
+nexprowl example.com -r resolvers.txt -rate 50
 
 # Passive only, pipe-ready for jq/nuclei
-dscan -l targets.txt -passive -silent -o results/subs.jsonl
+nexprowl -l targets.txt -passive -silent -o results/subs.jsonl
 
 # Markdown report for bug bounty notes
-dscan -l targets.txt -o results/report.md
+nexprowl -l targets.txt -o results/report.md
 ```
 
 ### `targets.txt` format
@@ -135,22 +128,22 @@ Format override: `-format json|jsonl|csv|md|html|txt`.
 Compare two runs (exit code `3` means changes were found):
 
 ```bash
-dscan diff -o results/diff.json results/OLD results/NEW
+nexprowl diff -o results/diff.json results/OLD results/NEW
 ```
 
 Pipeline mode:
 
 ```bash
-cat domains.txt | dscan -silent -emit urls
-dscan example.com -emit endpoints
+cat domains.txt | nexprowl -silent -emit urls
+nexprowl example.com -emit endpoints
 ```
 
 Optional passive provider keys:
 
 ```bash
-export DSCAN_SECURITYTRAILS_KEY=...
-export DSCAN_VIRUSTOTAL_KEY=...
-export DSCAN_SHODAN_KEY=...
+export NEXPROWL_SECURITYTRAILS_KEY=...
+export NEXPROWL_VIRUSTOTAL_KEY=...
+export NEXPROWL_SHODAN_KEY=...
 ```
 
 ## Flag Reference
@@ -192,8 +185,8 @@ PRs welcome. New signatures and passive sources are the easiest place to start.
 ### Setup
 
 ```bash
-git clone https://github.com/Arseno25/dscan.git
-cd dscan
+git clone https://github.com/Arseno25/dscan.git NexProwl
+cd NexProwl
 go build ./...
 go test ./...
 ```

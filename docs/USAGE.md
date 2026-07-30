@@ -1,152 +1,138 @@
-# dscan — Per-OS Usage Guide
+# NexProwl — Build and Usage Guide
 
-> dscan v2.0.0 · by shadow0x0
+> NexProwl v2.1.0 · by shadow0x0
 
----
+NexProwl does not publish release binaries. Build it locally after cloning the
+repository. Go 1.24 or newer is required.
+
+## Clone
+
+```bash
+git clone https://github.com/Arseno25/dscan.git NexProwl
+cd NexProwl
+```
 
 ## Windows
 
 ### PowerShell
 
 ```powershell
-# Run from the project folder
-.\bin\dscan-windows-amd64.exe example.com
-
-# Rename for convenience
-copy bin\dscan-windows-amd64.exe dscan.exe
-.\dscan.exe example.com
-
-# Batch + structured output (results\ is the default)
-.\dscan.exe -l targets.txt -T 10
-
-# All output formats
-.\dscan.exe example.com -o results\out.json
-.\dscan.exe example.com -o results\out.md
-.\dscan.exe example.com -o results\out.html
-.\dscan.exe example.com -o results\out.csv
-.\dscan.exe example.com -o results\out.jsonl
-.\dscan.exe example.com -o results\out.txt
-
-# Screenshot evidence (Chrome/Edge must be installed)
-.\dscan.exe example.com -screenshot
-
-# Compare historical runs
-.\dscan.exe diff -o results\diff.json results\OLD results\NEW
+go build -trimpath -ldflags="-s -w" -o nexprowl.exe .
+.\nexprowl.exe --help
+.\nexprowl.exe example.com
+.\nexprowl.exe -l targets.txt -T 10
 ```
 
-### CMD
+Optional: copy `nexprowl.exe` into a directory listed in your `PATH`.
 
-```cmd
-bin\dscan-windows-amd64.exe example.com
-bin\dscan-windows-amd64.exe -l targets.txt -T 10
+```powershell
+.\nexprowl.exe example.com -o results\out.html
+.\nexprowl.exe example.com -screenshot
+.\nexprowl.exe diff -o results\diff.json results\OLD results\NEW
 ```
-
----
 
 ## Linux
 
 ```bash
-# Setup
-chmod +x bin/dscan-linux-amd64
-./bin/dscan-linux-amd64 example.com
+go build -trimpath -ldflags="-s -w" -o nexprowl .
+chmod +x nexprowl
+./nexprowl --help
 
-# Install system-wide
-sudo cp bin/dscan-linux-amd64 /usr/local/bin/dscan
-dscan example.com
-
-# Background batch scan + log
-nohup dscan -l targets.txt -T 10 -o results/ > scan.log 2>&1 &
-
-# Pipe JSONL into jq
-dscan -l targets.txt -passive -silent -o results/subs.jsonl
-cat results/subs.jsonl | jq -r '.subdomains[].host' | sort -u
-
-# Native pipeline mode
-cat targets.txt | dscan -silent -emit urls
+# Optional system-wide install
+sudo mv nexprowl /usr/local/bin/
+nexprowl example.com
 ```
 
----
+```bash
+# Background batch scan
+nohup nexprowl -l targets.txt -T 10 -o results/ > scan.log 2>&1 &
+
+# Pipeline mode
+cat targets.txt | nexprowl -silent -emit urls
+```
 
 ## macOS
 
 ```bash
-# Apple Silicon (M1/M2/M3)
-chmod +x bin/dscan-darwin-arm64
-./bin/dscan-darwin-arm64 example.com
+go build -trimpath -ldflags="-s -w" -o nexprowl .
+chmod +x nexprowl
+./nexprowl --help
 
-# Intel
-chmod +x bin/dscan-darwin-amd64
-./bin/dscan-darwin-amd64 example.com
-
-# Bypass Gatekeeper (unsigned binary)
-xattr -d com.apple.quarantine bin/dscan-darwin-arm64
-
-# Install system-wide
-sudo cp bin/dscan-darwin-arm64 /usr/local/bin/dscan
-dscan example.com
+# Optional system-wide install
+sudo mv nexprowl /usr/local/bin/
+nexprowl example.com
 ```
-
----
 
 ## Usage Scenarios
 
 ```bash
 # Full help
-dscan --help
+nexprowl --help
 
-# 1. Passive bug bounty recon (no direct target contact)
-dscan -l scope.txt -m dns,sub -passive -silent -o results/subs.jsonl
+# Passive bug bounty recon
+nexprowl -l scope.txt -m dns,sub -passive -silent -o results/subs.jsonl
 
-# 2. Full recon on a single target + report
-dscan target.com -o results/report.md
+# Full recon with an HTML report
+nexprowl target.com -o results/report.html
 
-# 3. Stealth scan (avoid WAF/IDS)
-dscan target.com -r resolvers.txt -rate 30 -timeout 6
+# Rate-limited scan with custom resolvers
+nexprowl target.com -r resolvers.txt -rate 30 -timeout 6
 
-# 4. Subdomain takeover hunting
-dscan -l targets.txt -m sub,takeover -T 10 -o results/takeover.md
+# Subdomain takeover hunting
+nexprowl -l targets.txt -m sub,takeover -T 10 -o results/takeover.md
 
-# 5. Zone transfer check
-dscan target.com -m dns -silent
+# Zone transfer check
+nexprowl target.com -m dns -silent
 
-# 6. Wide port scan
-dscan target.com -p 1-10000 -t 1000 -m ports
+# Wide port scan
+nexprowl target.com -p 1-10000 -t 1000 -m ports
 
-# 7. Hidden vhost hunting
-dscan target.com -m dns,vhost
+# Hidden virtual-host discovery
+nexprowl target.com -m dns,vhost
 
-# 8. Large batch with per-target output
-dscan -l 1000_targets.txt -T 20 -t 200 -o results/
+# Large batch with timestamped output
+nexprowl -l 1000_targets.txt -T 20 -t 200 -o results/
 ```
 
----
+## Optional Provider Keys
 
-## Input File Formats
-
-### targets.txt
-
+```bash
+export NEXPROWL_SECURITYTRAILS_KEY=...
+export NEXPROWL_VIRUSTOTAL_KEY=...
+export NEXPROWL_SHODAN_KEY=...
 ```
+
+PowerShell:
+
+```powershell
+$env:NEXPROWL_SECURITYTRAILS_KEY = "..."
+$env:NEXPROWL_VIRUSTOTAL_KEY = "..."
+$env:NEXPROWL_SHODAN_KEY = "..."
+```
+
+## Input Files
+
+`targets.txt` accepts one target per line:
+
+```text
 # comments with #
 example.com
 target.co.id
-https://sub.domain.com/path   ← normalized to sub.domain.com
+https://sub.domain.com/path
 ```
 
-### resolvers.txt
+`resolvers.txt` accepts one DNS resolver per line:
 
-```
+```text
 8.8.8.8
 1.1.1.1
 9.9.9.9
-208.67.222.222
 1.0.0.1:53
 ```
 
-### Custom wordlist (-w)
+A custom subdomain wordlist passed through `-w` contains one label per line:
 
-One word per line, without the domain:
-
-```
+```text
 admin
 panel
 staging

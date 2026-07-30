@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"dscan/internal/scanner"
+	"nexprowl/internal/scanner"
 )
 
 type htmlReportData struct {
@@ -63,7 +63,7 @@ const htmlTemplate = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>dscan reconnaissance report</title>
+<title>NexProwl reconnaissance report</title>
 <style>
 :root{color-scheme:dark;--bg:#071018;--surface:#0d1924;--surface2:#122231;--line:#203548;--text:#e8f1f7;--muted:#8fa6b8;--cyan:#20d9ff;--green:#43e39f;--amber:#ffca5c;--red:#ff637d}
 *{box-sizing:border-box}
@@ -114,7 +114,7 @@ footer{padding-top:26px;text-align:center;color:var(--muted);font-size:12px}
 <body>
 <main>
 <header>
-  <div><div class="eyebrow">dscan / reconnaissance</div><h1>Scan report</h1><div class="muted">Generated {{.Generated}}</div></div>
+  <div><div class="eyebrow">NexProwl / reconnaissance</div><h1>Scan report</h1><div class="muted">Generated {{.Generated}}</div></div>
   <div class="muted">Standalone HTML · ready to share or print</div>
 </header>
 
@@ -287,7 +287,7 @@ footer{padding-top:26px;text-align:center;color:var(--muted);font-size:12px}
 </article>
 {{end}}
 
-<footer>dscan · all-in-one domain reconnaissance · by shadow0x0</footer>
+<footer>NexProwl · all-in-one domain reconnaissance · by shadow0x0</footer>
 </main>
 </body>
 </html>

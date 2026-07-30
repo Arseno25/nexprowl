@@ -3,7 +3,7 @@ package modules
 import (
 	"testing"
 
-	"dscan/internal/scanner"
+	"nexprowl/internal/scanner"
 )
 
 func TestNormalizeCrawlURL(t *testing.T) {

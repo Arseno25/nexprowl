@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"dscan/internal/scanner"
+	"nexprowl/internal/scanner"
 )
 
 type Diff struct {
@@ -51,7 +51,7 @@ func ComparePaths(oldPath, newPath string) (*Diff, error) {
 
 func (d *Diff) String() string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "dscan diff\nold: %s\nnew: %s\n", d.Old, d.New)
+	fmt.Fprintf(&b, "NexProwl diff\nold: %s\nnew: %s\n", d.Old, d.New)
 	for _, mode := range []string{"subdomains", "urls", "hostports", "ips", "endpoints", "web_state", "tls_state", "takeovers"} {
 		if len(d.Added[mode]) == 0 && len(d.Removed[mode]) == 0 {
 			continue

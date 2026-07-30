@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"dscan/internal/scanner"
+	"nexprowl/internal/scanner"
 )
 
 func TestWriteHTML(t *testing.T) {

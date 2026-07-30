@@ -8,8 +8,8 @@ import (
 	"github.com/pterm/pterm"
 	"github.com/pterm/pterm/putils"
 
-	"dscan/internal/detect"
-	"dscan/internal/scanner"
+	"nexprowl/internal/detect"
+	"nexprowl/internal/scanner"
 )
 
 var (
@@ -39,7 +39,7 @@ func gradientString(s string) string {
 
 // Banner renders the gradient ASCII banner + metadata line.
 func Banner() {
-	word := "DSCAN"
+	word := "NEXPROWL"
 	letters := make([]pterm.Letters, 0, len(word))
 	n := float32(len(word))
 	for i, ch := range word {

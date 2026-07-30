@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"dscan/internal/detect"
-	"dscan/internal/scanner"
+	"nexprowl/internal/detect"
+	"nexprowl/internal/scanner"
 )
 
 // VHost discovers virtual hosts on the target IP via Host-header /
@@ -202,7 +202,7 @@ func probeVHost(ctx context.Context, client *http.Client, ip, scheme, hostHeader
 		return vhostResult{}
 	}
 	req.Host = hostHeader // Host-header routing
-	req.Header.Set("User-Agent", "Mozilla/5.0 dscan/"+scanner.Version)
+	req.Header.Set("User-Agent", "Mozilla/5.0 NexProwl/"+scanner.Version)
 	req.Header.Set("Accept", "text/html,*/*;q=0.8")
 	req.Header.Set("Connection", "close")
 

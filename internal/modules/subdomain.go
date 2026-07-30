@@ -14,7 +14,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"dscan/internal/scanner"
+	"nexprowl/internal/scanner"
 )
 
 // Subdomain discovers subdomains via passive sources (subfinder technique)
@@ -51,7 +51,7 @@ func httpGetHeaders(ctx context.Context, client *http.Client, url string, header
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 dscan/"+scanner.Version)
+	req.Header.Set("User-Agent", "Mozilla/5.0 NexProwl/"+scanner.Version)
 	for key, value := range headers {
 		req.Header.Set(key, value)
 	}
@@ -68,7 +68,7 @@ func httpGetHeaders(ctx context.Context, client *http.Client, url string, header
 
 func configuredPassiveSources() []passiveSource {
 	sources := append([]passiveSource(nil), passiveSources...)
-	if key := strings.TrimSpace(os.Getenv("DSCAN_SECURITYTRAILS_KEY")); key != "" {
+	if key := strings.TrimSpace(os.Getenv("NEXPROWL_SECURITYTRAILS_KEY")); key != "" {
 		sources = append(sources, passiveSource{"securitytrails", func(ctx context.Context, client *http.Client, domain string) ([]string, error) {
 			body, err := httpGetHeaders(ctx, client,
 				"https://api.securitytrails.com/v1/domain/"+url.PathEscape(domain)+"/subdomains",
@@ -89,7 +89,7 @@ func configuredPassiveSources() []passiveSource {
 			return out, nil
 		}})
 	}
-	if key := strings.TrimSpace(os.Getenv("DSCAN_VIRUSTOTAL_KEY")); key != "" {
+	if key := strings.TrimSpace(os.Getenv("NEXPROWL_VIRUSTOTAL_KEY")); key != "" {
 		sources = append(sources, passiveSource{"virustotal", func(ctx context.Context, client *http.Client, domain string) ([]string, error) {
 			body, err := httpGetHeaders(ctx, client,
 				"https://www.virustotal.com/api/v3/domains/"+url.PathEscape(domain)+"/subdomains?limit=40",
@@ -112,7 +112,7 @@ func configuredPassiveSources() []passiveSource {
 			return out, nil
 		}})
 	}
-	if key := strings.TrimSpace(os.Getenv("DSCAN_SHODAN_KEY")); key != "" {
+	if key := strings.TrimSpace(os.Getenv("NEXPROWL_SHODAN_KEY")); key != "" {
 		sources = append(sources, passiveSource{"shodan", func(ctx context.Context, client *http.Client, domain string) ([]string, error) {
 			body, err := httpGet(ctx, client,
 				"https://api.shodan.io/dns/domain/"+url.PathEscape(domain)+"?key="+url.QueryEscape(key))

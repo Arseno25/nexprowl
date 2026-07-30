@@ -1,4 +1,4 @@
-// Package ui renders dscan's terminal interface: gradient banner,
+// Package ui renders NexProwl's terminal interface: gradient banner,
 // animated live-stats line, finding feed, and summary panels.
 package ui
 
@@ -11,7 +11,7 @@ import (
 
 	"github.com/pterm/pterm"
 
-	"dscan/internal/scanner"
+	"nexprowl/internal/scanner"
 )
 
 var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}

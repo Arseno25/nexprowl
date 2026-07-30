@@ -3,7 +3,7 @@ package ui
 import (
 	"testing"
 
-	"dscan/internal/scanner"
+	"nexprowl/internal/scanner"
 )
 
 func TestHTTPStatusLevel(t *testing.T) {

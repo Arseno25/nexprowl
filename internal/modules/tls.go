@@ -7,7 +7,7 @@ import (
 	"net"
 	"time"
 
-	"dscan/internal/scanner"
+	"nexprowl/internal/scanner"
 )
 
 // TLSSeed runs before subdomain discovery so SANs feed enumeration.

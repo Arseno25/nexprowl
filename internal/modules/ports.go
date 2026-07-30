@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"dscan/internal/detect"
-	"dscan/internal/scanner"
+	"nexprowl/internal/detect"
+	"nexprowl/internal/scanner"
 )
 
 // Ports is a rustscan-style TCP connect scanner: large worker pool,

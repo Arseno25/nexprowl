@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"dscan/internal/scanner"
+	"nexprowl/internal/scanner"
 )
 
 // ─── AXFR zone transfer (dnsrecon technique) ──────────────

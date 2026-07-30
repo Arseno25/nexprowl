@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"dscan/internal/scanner"
+	"nexprowl/internal/scanner"
 )
 
 type Manifest struct {

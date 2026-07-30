@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"dscan/internal/scanner"
+	"nexprowl/internal/scanner"
 )
 
 // CaptureScreenshots uses an installed Chrome/Chromium executable so the
@@ -49,7 +49,7 @@ func CaptureScreenshots(ctx context.Context, dir string, results []*scanner.Resu
 
 				name := screenshotName(web.URL)
 				path := filepath.Join(dir, name)
-				profileDir := filepath.Join(os.TempDir(), "dscan-chrome-"+name[:24])
+				profileDir := filepath.Join(os.TempDir(), "nexprowl-chrome-"+name[:24])
 				if err := os.MkdirAll(profileDir, 0700); err != nil {
 					return
 				}

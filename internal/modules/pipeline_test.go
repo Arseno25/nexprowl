@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"dscan/internal/scanner"
+	"nexprowl/internal/scanner"
 )
 
 func TestPortHTTPAndCrawlPipeline(t *testing.T) {

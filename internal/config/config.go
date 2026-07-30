@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"dscan/internal/data"
-	"dscan/internal/scanner"
+	"nexprowl/internal/data"
+	"nexprowl/internal/scanner"
 )
 
 // Config is the fully-resolved runtime configuration.
@@ -41,7 +41,7 @@ var valueFlags = map[string]bool{
 }
 
 // reorderArgs moves flags before positionals so both
-// "dscan -t 200 example.com" and "dscan example.com -t 200" work.
+// "nexprowl -t 200 example.com" and "nexprowl example.com -t 200" work.
 func reorderArgs(args []string) []string {
 	var flags, positional []string
 	for i := 0; i < len(args); i++ {
@@ -328,12 +328,12 @@ func LoadReader(r io.Reader) ([]string, error) {
 
 func usage() {
 	fmt.Fprintf(os.Stderr, `
-  dscan — all-in-one domain reconnaissance (by shadow0x0)
+  NexProwl — all-in-one domain reconnaissance (by shadow0x0)
 
   Usage:
-    dscan [flags] example.com
-    dscan -l targets.txt -T 10
+    nexprowl [flags] example.com
+    nexprowl -l targets.txt -T 10
 
-  Run 'dscan --help' for the full flag reference and examples.
+  Run 'nexprowl --help' for the full flag reference and examples.
 `)
 }
