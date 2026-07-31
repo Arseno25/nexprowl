@@ -92,11 +92,11 @@ func TestVHostModelAndProbe(t *testing.T) {
 	defer server.Close()
 	u, _ := url.Parse(server.URL)
 
-	result := probeVHost(t.Context(), server.Client(), u.Host, "http", "admin.example.com", time.Second)
+	result := probeVHost(t.Context(), server.Client(), u.Host, "http", "admin.example.com", time.Second, "")
 	if !result.ok || result.status != http.StatusNotFound || result.size != len("admin.example.com")+10 {
 		t.Fatalf("probe result = %#v", result)
 	}
-	model := buildVhostModel(t.Context(), server.Client(), u.Host, "http", "example.com", time.Second)
+	model := buildVhostModel(t.Context(), server.Client(), u.Host, "http", "example.com", time.Second, "")
 	if !model.ok || !model.isNoise("candidate.example.com", http.StatusNotFound, len("candidate.example.com")+10) {
 		t.Fatalf("model = %#v", model)
 	}
@@ -106,7 +106,7 @@ func TestVHostModelAndProbe(t *testing.T) {
 	if got := randHex(6); len(got) != 12 {
 		t.Fatalf("randHex length = %d", len(got))
 	}
-	sniClient := newVHostClient("admin.example.com", time.Second)
+	sniClient := newVHostClient("admin.example.com", time.Second, "")
 	transport := sniClient.Transport.(*http.Transport)
 	if transport.TLSClientConfig == nil || transport.TLSClientConfig.ServerName != "admin.example.com" {
 		t.Fatalf("vhost TLS client = %#v", transport.TLSClientConfig)
@@ -192,6 +192,81 @@ func TestTakeoverBodyAndEmptyRuns(t *testing.T) {
 	sc.Result.Subdomains = []scanner.Subdomain{{Host: "api.example.com", CNAME: "live.example.net"}}
 	if err := (Takeover{}).Run(t.Context(), sc); err != nil || len(sc.Result.Takeovers) != 0 {
 		t.Fatalf("non-candidate takeover = %#v, %v", sc.Result.Takeovers, err)
+	}
+}
+
+func TestScopedHTTPClientProxy(t *testing.T) {
+	opts := testOptions()
+	opts.ProxyURL = "socks5://127.0.0.1:9050"
+	sc := scanner.NewScanContext("example.com", opts, nil)
+
+	client := newScopedHTTPClient(sc)
+	transport := client.Transport.(*http.Transport)
+	if transport.Proxy == nil {
+		t.Fatal("proxied scoped client has no Proxy func")
+	}
+	req, _ := http.NewRequest(http.MethodGet, "https://example.com", nil)
+	u, err := transport.Proxy(req)
+	if err != nil || u == nil || u.Scheme != "socks5" || u.Host != "127.0.0.1:9050" {
+		t.Fatalf("Proxy(req) = %v, %v; want socks5://127.0.0.1:9050", u, err)
+	}
+
+	// Without -proxy the transport must stay direct.
+	sc = scanner.NewScanContext("example.com", testOptions(), nil)
+	if tr := newScopedHTTPClient(sc).Transport.(*http.Transport); tr.Proxy != nil {
+		t.Fatal("direct scoped client has Proxy set")
+	}
+}
+
+// TestHTTPClientForIPWithProxy pins the interaction between -proxy and
+// -scan-all-ips: through a proxy the dialer must reach the proxy, so the
+// pinned-IP dial override must be skipped (IP pinning is the proxy's job).
+func TestHTTPClientForIPWithProxy(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	_, port, _ := net.SplitHostPort(listener.Addr().String())
+
+	// Without proxy: DialContext ignores the hostname and dials the pinned IP.
+	sc := scanner.NewScanContext("example.com", testOptions(), nil)
+	pinned := newHTTPClientForIP(sc, "127.0.0.1").Transport.(*http.Transport)
+	conn, err := pinned.DialContext(t.Context(), "tcp", net.JoinHostPort("unresolvable.invalid", port))
+	if err != nil {
+		t.Fatalf("pinned dial should reach the pinned IP: %v", err)
+	}
+	conn.Close()
+
+	// With proxy: no pinning — dialing an unresolvable name must fail
+	// (the stock dialer runs, proving the override was skipped).
+	opts := testOptions()
+	opts.ProxyURL = "socks5://127.0.0.1:9050"
+	sc = scanner.NewScanContext("example.com", opts, nil)
+	proxied := newHTTPClientForIP(sc, "127.0.0.1").Transport.(*http.Transport)
+	if proxied.Proxy == nil {
+		t.Fatal("proxied IP client lost the Proxy func")
+	}
+	if conn, err := proxied.DialContext(t.Context(), "tcp", net.JoinHostPort("unresolvable.invalid", port)); err == nil {
+		conn.Close()
+		t.Fatal("proxied client still pins the IP; override must be skipped")
+	}
+}
+
+func TestVHostClientProxy(t *testing.T) {
+	client := newVHostClient("admin.example.com", time.Second, "socks5://127.0.0.1:9050")
+	transport := client.Transport.(*http.Transport)
+	if transport.Proxy == nil {
+		t.Fatal("vhost client has no Proxy func")
+	}
+	if transport.TLSClientConfig == nil || transport.TLSClientConfig.ServerName != "admin.example.com" {
+		t.Fatal("vhost client lost its SNI pinning when proxied")
+	}
+
+	// Empty proxy URL keeps the transport direct.
+	direct := newVHostClient("", time.Second, "").Transport.(*http.Transport)
+	if direct.Proxy != nil {
+		t.Fatal("direct vhost client has Proxy set")
 	}
 }
 

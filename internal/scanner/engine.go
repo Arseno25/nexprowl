@@ -2,7 +2,6 @@ package scanner
 
 import (
 	"context"
-	"sort"
 	"sync"
 	"time"
 )
@@ -96,17 +95,3 @@ func (e *Engine) runTarget(ctx context.Context, target string) *Result {
 }
 
 // ─── Shared helpers ───────────────────────────────────────
-
-// UniqueSorted dedupes and sorts a string slice.
-func UniqueSorted(in []string) []string {
-	seen := make(map[string]struct{}, len(in))
-	out := make([]string, 0, len(in))
-	for _, v := range in {
-		if _, ok := seen[v]; !ok {
-			seen[v] = struct{}{}
-			out = append(out, v)
-		}
-	}
-	sort.Strings(out)
-	return out
-}

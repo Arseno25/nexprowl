@@ -58,7 +58,7 @@ func main() {
 		ui.Banner()
 		ui.Boot()
 		ui.ConfigLine(len(cfg.Targets), cfg.Modules, cfg.Opts.Workers,
-			cfg.Opts.Concurrency, cfg.TimeoutS, cfg.Opts.Rate, len(cfg.Opts.Resolvers))
+			cfg.Opts.Concurrency, cfg.TimeoutS, cfg.Opts.Rate, len(cfg.Opts.Resolvers), cfg.Opts.Stealth)
 		renderer = ui.NewUI(len(cfg.Targets))
 		go renderer.Run()
 		emit = renderer.Emitter()

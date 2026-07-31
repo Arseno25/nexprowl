@@ -200,6 +200,9 @@ func newHTTPClient(timeout time.Duration) *http.Client {
 
 func newScopedHTTPClient(sc *scanner.ScanContext) *http.Client {
 	client := newHTTPClient(sc.Opts.Timeout)
+	if err := scanner.ApplyProxy(client.Transport.(*http.Transport), sc.Opts.ProxyURL); err != nil {
+		sc.Log(scanner.LevelInfo, "http: proxy disabled: %s", err)
+	}
 	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		if len(via) >= 5 || !sc.InScope(req.URL.Hostname()) {
 			return http.ErrUseLastResponse
@@ -212,6 +215,11 @@ func newScopedHTTPClient(sc *scanner.ScanContext) *http.Client {
 func newHTTPClientForIP(sc *scanner.ScanContext, ip string) *http.Client {
 	timeout := sc.Opts.Timeout
 	client := newScopedHTTPClient(sc)
+	if sc.Opts.ProxyURL != "" {
+		// Through a proxy the transport must dial the proxy, not the pinned
+		// IP — routing is the proxy's job, so IP pinning is meaningless.
+		return client
+	}
 	transport := client.Transport.(*http.Transport)
 	transport.DialContext = func(ctx context.Context, network, address string) (net.Conn, error) {
 		_, port, err := net.SplitHostPort(address)

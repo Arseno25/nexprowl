@@ -2,16 +2,30 @@ package scanner
 
 import (
 	"context"
-	"crypto/rand"
+	cryptorand "crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"math/rand"
 	"net"
 	"net/url"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 )
+
+// Resolver wraps net.Resolver so DoH can be swapped in transparently.
+type Resolver interface {
+	LookupIP(ctx context.Context, network, host string) ([]net.IP, error)
+	LookupHost(ctx context.Context, host string) ([]string, error)
+	LookupAddr(ctx context.Context, addr string) ([]string, error)
+	LookupMX(ctx context.Context, host string) ([]*net.MX, error)
+	LookupNS(ctx context.Context, host string) ([]*net.NS, error)
+	LookupTXT(ctx context.Context, host string) ([]string, error)
+	LookupCNAME(ctx context.Context, host string) (string, error)
+	LookupSRV(ctx context.Context, service, proto, name string) (string, []*net.SRV, error)
+}
 
 // ScanContext carries per-target state shared by all modules.
 type ScanContext struct {
@@ -20,7 +34,7 @@ type ScanContext struct {
 	Result *Result
 
 	emit     Emitter
-	resolver *net.Resolver
+	resolver Resolver
 	limiter  *RateLimiter
 
 	mu          sync.Mutex
@@ -44,9 +58,12 @@ func NewScanContext(rawTarget string, opts *Options, emit Emitter) *ScanContext 
 	}
 }
 
-// buildResolver returns the system resolver, or a round-robin resolver
-// over custom DNS servers when -r is used (massdns/dnsx technique).
-func buildResolver(opts *Options) *net.Resolver {
+// buildResolver returns the system DNS resolver, a round-robin
+// custom-resolver, or a DoH resolver when -doh is set.
+func buildResolver(opts *Options) Resolver {
+	if opts.DoH {
+		return newDoHResolver()
+	}
 	if len(opts.Resolvers) == 0 {
 		return &net.Resolver{PreferGo: true}
 	}
@@ -67,11 +84,36 @@ func buildResolver(opts *Options) *net.Resolver {
 	}
 }
 
-// Resolver returns the shared DNS resolver.
-func (sc *ScanContext) Resolver() *net.Resolver { return sc.resolver }
+// ─── Resolver helper ──────────────────────────────────────
 
-// Limit applies the per-target rate limit (no-op when unlimited).
-func (sc *ScanContext) Limit(ctx context.Context) { sc.limiter.Wait(ctx) }
+// Resolver returns the shared DNS resolver.
+func (sc *ScanContext) Resolver() Resolver { return sc.resolver }
+
+// ─── jitter ────────────────────────────────────────────────
+
+// jitterSleep blocks for a random 0..maxMs millisecond delay, or returns
+// early when ctx is cancelled. rand.Intn is the package-level source,
+// which is safe for concurrent use — a shared rand.Source is not, and
+// Limit() is called from every module worker goroutine.
+func jitterSleep(ctx context.Context, maxMs int) {
+	if maxMs <= 0 {
+		return
+	}
+	timer := time.NewTimer(time.Duration(rand.Intn(maxMs+1)) * time.Millisecond)
+	defer timer.Stop()
+	select {
+	case <-timer.C:
+	case <-ctx.Done():
+	}
+}
+
+// Limit applies the per-target rate limit + optional jitter delay.
+func (sc *ScanContext) Limit(ctx context.Context) {
+	sc.limiter.Wait(ctx)
+	if sc.Opts.JitterMs > 0 {
+		jitterSleep(ctx, sc.Opts.JitterMs)
+	}
+}
 
 // Log emits a log event.
 func (sc *ScanContext) Log(level Level, format string, args ...any) {
@@ -199,20 +241,14 @@ func domainMatch(host, domain string) bool {
 
 // ─── Wildcard DNS handling ────────────────────────────────
 
-// wildcardProbes is how many random names are resolved. One is not enough:
-// a wildcard record backed by a rotating pool answers different IPs each
-// time, so a single sample filters only part of the noise.
 const wildcardProbes = 3
 
-// DetectWildcard resolves several random non-existent subdomains. Zones with
-// wildcard DNS make every bruteforce hit a false positive — record the
-// wildcard IPs so the subdomain module can filter them out. Safe to call
-// more than once; probes accumulate.
+// DetectWildcard resolves several random non-existent subdomains.
 func (sc *ScanContext) DetectWildcard(ctx context.Context) {
 	found := 0
 	for i := 0; i < wildcardProbes; i++ {
 		buf := make([]byte, 8)
-		_, _ = rand.Read(buf)
+		_, _ = cryptorand.Read(buf)
 		host := hex.EncodeToString(buf) + "." + sc.Target
 
 		c, cancel := context.WithTimeout(ctx, sc.Opts.Timeout)
@@ -246,4 +282,21 @@ func (sc *ScanContext) IsWildcardOnly(ips []string) bool {
 		}
 	}
 	return true
+}
+
+// UniqueSorted deduplicates and sorts a string slice.
+func UniqueSorted(in []string) []string {
+	if len(in) == 0 {
+		return in
+	}
+	seen := make(map[string]struct{}, len(in))
+	out := make([]string, 0, len(in))
+	for _, s := range in {
+		if _, ok := seen[s]; !ok {
+			seen[s] = struct{}{}
+			out = append(out, s)
+		}
+	}
+	sort.Strings(out)
+	return out
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"net"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 )
@@ -122,6 +123,49 @@ func TestDetectWildcardWithCustomResolver(t *testing.T) {
 	if !foundWarning {
 		t.Fatalf("events = %#v", events)
 	}
+}
+
+func TestJitterSleep(t *testing.T) {
+	// maxMs <= 0 must return immediately.
+	start := time.Now()
+	jitterSleep(t.Context(), 0)
+	if elapsed := time.Since(start); elapsed > 20*time.Millisecond {
+		t.Fatalf("jitterSleep(0) took %s; want immediate", elapsed)
+	}
+
+	// A positive bound sleeps at most maxMs (plus scheduler slack).
+	start = time.Now()
+	jitterSleep(t.Context(), 50)
+	if elapsed := time.Since(start); elapsed > 100*time.Millisecond {
+		t.Fatalf("jitterSleep(50) took %s; want <= ~50ms", elapsed)
+	}
+
+	// A cancelled context returns immediately instead of sleeping.
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	start = time.Now()
+	jitterSleep(ctx, 60_000) // would sleep up to a minute without the cancel check
+	if elapsed := time.Since(start); elapsed > 50*time.Millisecond {
+		t.Fatalf("jitterSleep(cancelled) took %s; want immediate", elapsed)
+	}
+}
+
+// TestJitterSleepConcurrent pins the race that a shared rand.Source had:
+// Limit() is called from every module worker goroutine, so the jitter
+// path must be safe under the race detector.
+func TestJitterSleepConcurrent(t *testing.T) {
+	sc := NewScanContext("example.com", &Options{JitterMs: 2}, nil)
+	var wg sync.WaitGroup
+	for i := 0; i < 64; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := 0; j < 25; j++ {
+				sc.Limit(t.Context())
+			}
+		}()
+	}
+	wg.Wait()
 }
 
 func serveWildcardDNS(conn net.PacketConn) {

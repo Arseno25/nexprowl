@@ -118,8 +118,11 @@ func TestAllReportFormats(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s: %v", extension, err)
 		}
-		if !reflect.DeepEqual(files, []string{path}) {
-			t.Fatalf("%s files = %v", extension, files)
+		// single-file Save always returns the main file + companion architecture.md
+		archPath := architectureCompanionPath(path)
+		wantFiles := []string{path, archPath}
+		if !reflect.DeepEqual(files, wantFiles) {
+			t.Fatalf("%s files = %v, want %v", extension, files, wantFiles)
 		}
 		body, err := os.ReadFile(path)
 		if err != nil {

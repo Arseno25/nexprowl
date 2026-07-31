@@ -50,11 +50,11 @@ func (m vhostModel) isNoise(host string, status, size int) bool {
 }
 
 // buildVhostModel samples two random hosts of different lengths.
-func buildVhostModel(ctx context.Context, client *http.Client, ip, scheme, target string, timeout time.Duration) vhostModel {
+func buildVhostModel(ctx context.Context, client *http.Client, ip, scheme, target string, timeout time.Duration, proxyURL string) vhostModel {
 	h1 := randHex(6) + "." + target    // short random
 	h2 := randHex(12) + ".x." + target // long random (different length)
-	r1 := probeVHost(ctx, client, ip, scheme, h1, timeout)
-	r2 := probeVHost(ctx, client, ip, scheme, h2, timeout)
+	r1 := probeVHost(ctx, client, ip, scheme, h1, timeout, proxyURL)
+	r2 := probeVHost(ctx, client, ip, scheme, h2, timeout, proxyURL)
 	if !r1.ok || !r2.ok {
 		return vhostModel{}
 	}
@@ -77,11 +77,11 @@ func (VHost) Run(ctx context.Context, sc *scanner.ScanContext) error {
 	ip := sc.Result.IPs[0]
 
 	// one shared client for plain HTTP; HTTPS needs per-host SNI
-	httpClient := newVHostClient("", sc.Opts.Timeout)
+	httpClient := newVHostClient("", sc.Opts.Timeout, sc.Opts.ProxyURL)
 
 	// wildcard-vhost baseline models per scheme
-	modelHTTP := buildVhostModel(ctx, httpClient, ip, "http", sc.Target, sc.Opts.Timeout)
-	modelHTTPS := buildVhostModel(ctx, nil, ip, "https", sc.Target, sc.Opts.Timeout)
+	modelHTTP := buildVhostModel(ctx, httpClient, ip, "http", sc.Target, sc.Opts.Timeout, sc.Opts.ProxyURL)
+	modelHTTPS := buildVhostModel(ctx, nil, ip, "https", sc.Target, sc.Opts.Timeout, sc.Opts.ProxyURL)
 	if !modelHTTP.ok && !modelHTTPS.ok {
 		sc.Log(scanner.LevelInfo, "vhost: skipped (no web service on ip)")
 		return nil
@@ -114,7 +114,7 @@ func (VHost) Run(ctx context.Context, sc *scanner.ScanContext) error {
 					continue
 				}
 				sc.Limit(ctx)
-				res := probeVHost(ctx, cl, ip, scheme, host, sc.Opts.Timeout)
+				res := probeVHost(ctx, cl, ip, scheme, host, sc.Opts.Timeout, sc.Opts.ProxyURL)
 				if !res.ok {
 					continue
 				}
@@ -166,11 +166,12 @@ type vhostResult struct {
 // ServerName, which HTTPS vhost routing needs — so HTTPS requires one client
 // per candidate host. Plain HTTP has no such constraint and reuses a single
 // client for the whole wordlist.
-func newVHostClient(sni string, timeout time.Duration) *http.Client {
+func newVHostClient(sni string, timeout time.Duration, proxyURL string) *http.Client {
 	t := &http.Transport{
 		DisableKeepAlives: true,
 		DialContext:       (&net.Dialer{Timeout: timeout}).DialContext,
 	}
+	_ = scanner.ApplyProxy(t, proxyURL) // validated at startup; empty is a no-op
 	if sni != "" {
 		t.TLSClientConfig = &tls.Config{
 			InsecureSkipVerify: true,
@@ -188,9 +189,9 @@ func newVHostClient(sni string, timeout time.Duration) *http.Client {
 
 // probeVHost requests scheme://ip/ with a custom Host header.
 // A nil client means "build a per-host HTTPS client" (SNI must vary).
-func probeVHost(ctx context.Context, client *http.Client, ip, scheme, hostHeader string, timeout time.Duration) vhostResult {
+func probeVHost(ctx context.Context, client *http.Client, ip, scheme, hostHeader string, timeout time.Duration, proxyURL string) vhostResult {
 	if client == nil {
-		client = newVHostClient(hostHeader, timeout)
+		client = newVHostClient(hostHeader, timeout, proxyURL)
 	}
 
 	c, cancel := context.WithTimeout(ctx, timeout+2*time.Second)

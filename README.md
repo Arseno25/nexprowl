@@ -82,6 +82,12 @@ nexprowl example.com -m dns,vhost
 # Stealth: custom resolvers + 50 ops/s rate limit
 nexprowl example.com -r resolvers.txt -rate 50
 
+# Low-noise preset: workers=10, rate=10, timeout=8, passive-only
+nexprowl -stealth example.com
+
+# Full evasion: Tor proxy + DNS-over-HTTPS + request jitter
+nexprowl -stealth -doh -jitter 500 -proxy socks5://127.0.0.1:9050 example.com
+
 # Passive only, pipe-ready for jq/nuclei
 nexprowl -l targets.txt -passive -silent -o results/subs.jsonl
 

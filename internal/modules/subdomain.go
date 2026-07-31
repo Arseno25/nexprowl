@@ -281,6 +281,12 @@ func (Subdomain) Run(ctx context.Context, sc *scanner.ScanContext) error {
 
 	// Phase 1 — passive sources in parallel
 	client := &http.Client{Timeout: 12 * time.Second}
+	if sc.Opts.ProxyURL != "" {
+		t := &http.Transport{}
+		if err := scanner.ApplyProxy(t, sc.Opts.ProxyURL); err == nil {
+			client.Transport = t
+		}
+	}
 	sources := configuredPassiveSources()
 	var wg sync.WaitGroup
 	for _, src := range sources {
