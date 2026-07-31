@@ -64,7 +64,7 @@ func TestRendererAndHumanOutput(t *testing.T) {
 	output := captureOutput(t, func() {
 		Banner()
 		Boot()
-		ConfigLine(1, "dns,http", 10, 2, 3, 5, 0)
+		ConfigLine(1, "dns,http", 10, 2, 3, 5, 0, false)
 		PrintHelp()
 
 		renderer := NewUI(1)

@@ -61,7 +61,7 @@ func Boot() {
 }
 
 // ConfigLine prints the run configuration as a compact, scannable line.
-func ConfigLine(targets int, modules string, workers, concurrency, timeoutSec, rate, resolvers int) {
+func ConfigLine(targets int, modules string, workers, concurrency, timeoutSec, rate, resolvers int, stealth bool) {
 	rateStr := "∞"
 	if rate > 0 {
 		rateStr = fmt.Sprintf("%d/s", rate)
@@ -70,8 +70,22 @@ func ConfigLine(targets int, modules string, workers, concurrency, timeoutSec, r
 	if resolvers > 0 {
 		resStr = fmt.Sprintf("%d custom", resolvers)
 	}
-	line := fmt.Sprintf("targets %d  │  modules %s  │  workers %d  │  concurrent %d  │  timeout %ds  │  rate %s  │  dns %s",
-		targets, modules, workers, concurrency, timeoutSec, rateStr, resStr)
-	pterm.Println(" " + badge("RUN", info) + " " + dim.Sprint(line))
+	parts := []string{
+		fmt.Sprintf("targets %d", targets),
+		fmt.Sprintf("modules %s", modules),
+		fmt.Sprintf("workers %d", workers),
+		fmt.Sprintf("concurrent %d", concurrency),
+		fmt.Sprintf("timeout %ds", timeoutSec),
+		fmt.Sprintf("rate %s", rateStr),
+		fmt.Sprintf("dns %s", resStr),
+	}
+	line := strings.Join(parts, "  │  ")
+	if stealth {
+		badge := pterm.NewRGB(0, 229, 255).Sprint("STEALTH")
+		line = badge + "  " + dim.Sprint(line)
+	} else {
+		line = badge("RUN", info) + " " + dim.Sprint(line)
+	}
+	pterm.Println(" " + line)
 	pterm.Println()
 }

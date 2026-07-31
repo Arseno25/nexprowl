@@ -25,6 +25,7 @@ type Options struct {
 	PortsSubs   bool
 	ProbeBoth   bool
 	Active      bool
+	Stealth     bool
 	CrawlDepth  int
 	CrawlMax    int
 	Screenshot  bool
