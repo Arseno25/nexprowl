@@ -353,7 +353,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }},
         { selector: 'edge.dotted', style: { 'line-style': 'dashed' } }
       ],
-      layout: { name: 'dagre', rankDir: 'TB', nodeSep: 40, edgeSep: 40, rankSep: 60, padding: 20 },
+      layout: { 
+        name: 'dagre', 
+        rankDir: 'TB', 
+        nodeSep: 60, 
+        edgeSep: 40, 
+        rankSep: 80, 
+        padding: 30,
+        nodeDimensionsIncludeLabels: true
+      },
       wheelSensitivity: 0.2,
       minZoom: 0.1,
       maxZoom: 5
