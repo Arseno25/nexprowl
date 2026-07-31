@@ -11,7 +11,7 @@ import (
 
 type htmlTarget struct {
 	*scanner.Result
-	Diagram string
+	GraphJSON template.JS
 }
 
 type htmlReportData struct {
@@ -30,8 +30,8 @@ func writeHTML(path string, results []*scanner.Result) error {
 	}
 	for _, r := range results {
 		data.Results = append(data.Results, htmlTarget{
-			Result:  r,
-			Diagram: ArchitectureDiagram(r),
+			Result:    r,
+			GraphJSON: template.JS(BuildArchitectureGraph(r).CytoscapeJSON()),
 		})
 		data.Subs += len(r.Subdomains)
 		data.Ports += len(r.Ports)
@@ -114,12 +114,11 @@ a{color:var(--cyan);text-decoration:none} a:hover{text-decoration:underline}
 .kv dt{color:var(--muted)}.kv dd{margin:0;overflow-wrap:anywhere}
 .records{max-height:260px;overflow:auto;margin:8px 0 0;padding:12px;border-radius:8px;background:#071018;color:#b9cad6;white-space:pre-wrap}
 footer{padding-top:26px;text-align:center;color:var(--muted);font-size:12px}
-.arch{position:relative;background:var(--surface2);border-radius:8px;height:400px;overflow:hidden;margin-top:12px}
+.arch{position:relative;background:var(--surface2);border-radius:8px;height:500px;overflow:hidden;margin-top:12px}
 .arch.fullscreen{position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9999;border-radius:0;margin:0}
 .fs-btn{position:absolute;top:12px;right:12px;z-index:1000;background:var(--bg);border:1px solid var(--line);color:var(--text);padding:6px 12px;border-radius:6px;cursor:pointer;font:12px ui-sans-serif,system-ui;box-shadow:0 4px 12px rgba(0,0,0,.2)}
 .fs-btn:hover{background:var(--line)}
-.mermaid{width:100%;height:100%}
-.mermaid svg{width:100%!important;height:100%!important}
+.arch-cy{width:100%;height:100%}
 @media(max-width:800px){main{width:min(100% - 20px,1180px);padding-top:28px}header,.target-head{display:block}.chips{justify-content:flex-start;margin-top:14px}.summary{grid-template-columns:repeat(2,1fr)}.summary .metric:first-child{grid-column:1/-1}.content{grid-template-columns:1fr}.panel.wide{grid-column:auto}}
 @media(max-width:520px){.target-stats{grid-template-columns:repeat(2,1fr)}.summary{grid-template-columns:1fr}.summary .metric:first-child{grid-column:auto}.content{padding:12px}.target-head{padding:18px}}
 @media print{:root{color-scheme:light;--bg:#fff;--surface:#fff;--surface2:#fff;--line:#d9e0e5;--text:#16232d;--muted:#536875}body{background:#fff}.target,.metric,.panel{box-shadow:none}.target{break-inside:avoid}main{width:100%;padding:0}}
@@ -160,12 +159,12 @@ footer{padding-top:26px;text-align:center;color:var(--muted);font-size:12px}
   </div>
 
   <div class="content">
-    {{if .Diagram}}
+    {{if .GraphJSON}}
     <section class="panel wide">
       <h3>Architecture map</h3>
       <div class="arch">
         <button type="button" class="fs-btn">⛶ Fullscreen</button>
-        <div class="mermaid">{{.Diagram}}</div>
+        <div class="arch-cy" data-elements="{{.GraphJSON}}"></div>
       </div>
     </section>
     {{end}}
@@ -313,27 +312,54 @@ footer{padding-top:26px;text-align:center;color:var(--muted);font-size:12px}
 
 <footer>NexProwl · all-in-one domain reconnaissance · by shadow0x0</footer>
 </main>
-<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
-<script type="module">
-import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
-mermaid.initialize({
-  startOnLoad: false, theme: 'dark', securityLevel: 'strict',
-  flowchart: { curve: 'basis', htmlLabels: true },
-  themeVariables: { fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif', lineColor: '#4a6572', primaryColor: '#122231', primaryTextColor: '#e8f1f7', primaryBorderColor: '#203548' }
-});
+<script src="https://cdn.jsdelivr.net/npm/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.arch-cy').forEach(container => {
+    let elems = [];
+    try { elems = JSON.parse(container.getAttribute('data-elements')); } catch (e) { return; }
+    
+    const cy = cytoscape({
+      container: container,
+      elements: elems,
+      style: [
+        { selector: 'node', style: {
+          'label': 'data(label)', 'text-wrap': 'wrap', 'text-valign': 'center', 'text-halign': 'center',
+          'shape': 'round-rectangle', 'padding': '10px', 'font-family': 'Inter, sans-serif',
+          'font-size': '12px', 'color': '#e8f1f7', 'background-color': '#122231',
+          'border-width': 1, 'border-color': '#4a6572'
+        }},
+        { selector: ':parent', style: {
+          'text-valign': 'top', 'text-halign': 'center', 'background-color': 'rgba(13, 25, 36, 0.5)',
+          'border-color': '#203548', 'border-width': 1, 'border-style': 'dashed', 'padding': '15px'
+        }},
+        { selector: '.root', style: { 'background-color': '#0b3542', 'border-color': '#20d9ff', 'border-width': 2 } },
+        { selector: '.dns', style: { 'border-color': '#20d9ff' } },
+        { selector: '.net', style: { 'border-color': '#43e39f' } },
+        { selector: '.sub', style: { 'background-color': '#0d1924', 'border-color': '#4a6572' } },
+        { selector: '.web', style: { 'border-color': '#ffca5c' } },
+        { selector: '.waf', style: { 'shape': 'diamond', 'border-color': '#ffca5c', 'background-color': '#231a10' } },
+        { selector: '.danger', style: { 'background-color': '#33101c', 'border-color': '#ff637d' } },
+        { selector: '.muted', style: { 'border-style': 'dashed', 'color': '#718a99' } },
+        { selector: 'edge', style: {
+          'width': 2, 'line-color': '#4a6572', 'target-arrow-color': '#4a6572',
+          'target-arrow-shape': 'triangle', 'curve-style': 'bezier', 'label': 'data(label)',
+          'font-size': '10px', 'color': '#8fa6b8', 'text-background-opacity': 1,
+          'text-background-color': '#0d1924', 'text-background-padding': '3px'
+        }},
+        { selector: 'edge.dotted', style: { 'line-style': 'dashed' } }
+      ],
+      layout: { name: 'dagre', rankDir: 'TB', nodeSep: 40, edgeSep: 40, rankSep: 60, padding: 20 },
+      wheelSensitivity: 0.2,
+      minZoom: 0.1,
+      maxZoom: 5
+    });
 
-async function initMermaid() {
-  const nodes = document.querySelectorAll('.mermaid');
-  if (nodes.length === 0) return;
-  await mermaid.run({ querySelector: '.mermaid' });
-
-  document.querySelectorAll('.arch').forEach(arch => {
-    const svg = arch.querySelector('svg');
-    if (svg) {
-      const pz = svgPanZoom(svg, {
-        zoomEnabled: true, controlIconsEnabled: true, fit: true, center: true, minZoom: 0.1, maxZoom: 10
-      });
-      const btn = arch.querySelector('.fs-btn');
+    const arch = container.parentElement;
+    const btn = arch.querySelector('.fs-btn');
+    if (btn) {
       btn.addEventListener('click', () => {
         arch.classList.toggle('fullscreen');
         if (arch.classList.contains('fullscreen')) {
@@ -343,12 +369,11 @@ async function initMermaid() {
           btn.innerHTML = '⛶ Fullscreen';
           document.body.style.overflow = '';
         }
-        setTimeout(() => { pz.resize(); pz.fit(); pz.center(); }, 50);
+        setTimeout(() => { cy.resize(); cy.fit(); }, 50);
       });
     }
   });
-}
-initMermaid();
+});
 </script>
 </body>
 </html>

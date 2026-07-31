@@ -1,6 +1,7 @@
 package report
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -35,17 +36,38 @@ const (
 	archLabelW  = 40
 )
 
-// archBuilder accumulates mermaid lines with unique sequential node IDs.
+type archGraph struct {
+	Nodes []archNode
+	Edges []archEdge
+}
+
+type archNode struct {
+	ID     string `json:"id"`
+	Label  string `json:"label"`
+	Class  string `json:"class,omitempty"`
+	Parent string `json:"parent,omitempty"`
+}
+
+type archEdge struct {
+	Source string `json:"source"`
+	Target string `json:"target"`
+	Label  string `json:"label,omitempty"`
+	Class  string `json:"class,omitempty"`
+}
+
+// archBuilder accumulates nodes and edges with unique sequential IDs.
 type archBuilder struct {
-	lines  []string
-	edges  []string
+	graph  *archGraph
 	ids    map[string]string
 	next   int
-	indent string
+	parent string
 }
 
 func newArchBuilder() *archBuilder {
-	return &archBuilder{ids: map[string]string{}, indent: "  "}
+	return &archBuilder{
+		graph: &archGraph{},
+		ids:   map[string]string{},
+	}
 }
 
 // node declares a node once (dedup by key) and returns its ID.
@@ -56,62 +78,101 @@ func (b *archBuilder) node(key, label, class string) string {
 	id := fmt.Sprintf("n%d", b.next)
 	b.next++
 	b.ids[key] = id
-	shape := fmt.Sprintf(`%s["%s"]`, id, mermaidSafe(label))
-	if class != "" {
-		shape += ":::" + class
-	}
-	b.lines = append(b.lines, b.indent+shape)
+	b.graph.Nodes = append(b.graph.Nodes, archNode{
+		ID:     id,
+		Label:  label,
+		Class:  class,
+		Parent: b.parent,
+	})
 	return id
 }
 
 // diamond declares a diamond-shaped node {}.
 func (b *archBuilder) diamond(key, label, class string) string {
-	if id, ok := b.ids[key]; ok {
-		return id
-	}
-	id := fmt.Sprintf("n%d", b.next)
-	b.next++
-	b.ids[key] = id
-	shape := fmt.Sprintf(`%s{"%s"}`, id, mermaidSafe(label))
-	if class != "" {
-		shape += ":::" + class
-	}
-	b.lines = append(b.lines, b.indent+shape)
-	return id
+	return b.node(key, label, class) // shape is handled by renderer class
 }
 
 func (b *archBuilder) edge(from, to, label string) {
-	if label != "" {
-		b.edges = append(b.edges, fmt.Sprintf("  %s -->|%s| %s", from, label, to))
-	} else {
-		b.edges = append(b.edges, fmt.Sprintf("  %s --> %s", from, to))
-	}
+	b.graph.Edges = append(b.graph.Edges, archEdge{Source: from, Target: to, Label: label})
 }
 
 func (b *archBuilder) dotEdge(from, to, label string) {
-	if label != "" {
-		b.edges = append(b.edges, fmt.Sprintf("  %s -.->|%s| %s", from, label, to))
-	} else {
-		b.edges = append(b.edges, fmt.Sprintf("  %s -.-> %s", from, to))
-	}
+	b.graph.Edges = append(b.graph.Edges, archEdge{Source: from, Target: to, Label: label, Class: "dotted"})
 }
 
 func (b *archBuilder) linkEdge(from, to string) {
-	b.edges = append(b.edges, fmt.Sprintf("  %s --- %s", from, to))
+	b.graph.Edges = append(b.graph.Edges, archEdge{Source: from, Target: to, Class: "link"})
 }
 
 func (b *archBuilder) openSub(id, title string) {
-	b.lines = append(b.lines, fmt.Sprintf(`  subgraph %s["%s"]`, id, title))
-	b.indent = "    "
+	b.graph.Nodes = append(b.graph.Nodes, archNode{
+		ID:    id,
+		Label: title,
+		Class: "group",
+	})
+	b.parent = id
 }
 
 func (b *archBuilder) closeSub() {
-	b.indent = "  "
-	b.lines = append(b.lines, "  end")
+	b.parent = ""
 }
 
-// classDefs appends the shared styling rules.
-func (b *archBuilder) classDefs() {
+// Mermaid renders the graph as a mermaid flowchart string.
+func (g *archGraph) Mermaid() string {
+	var b strings.Builder
+	b.WriteString("graph TD\n")
+
+	// Group nodes by parent
+	children := make(map[string][]archNode)
+	var roots []archNode
+	for _, n := range g.Nodes {
+		if n.Parent == "" {
+			roots = append(roots, n)
+		} else {
+			children[n.Parent] = append(children[n.Parent], n)
+		}
+	}
+
+	var writeNode func(n archNode, indent string)
+	writeNode = func(n archNode, indent string) {
+		if n.Class == "group" {
+			fmt.Fprintf(&b, "%ssubgraph %s[\"%s\"]\n", indent, n.ID, mermaidSafe(n.Label))
+			for _, child := range children[n.ID] {
+				writeNode(child, indent+"  ")
+			}
+			fmt.Fprintf(&b, "%send\n", indent)
+			return
+		}
+		shapeL, shapeR := "[", "]"
+		if n.Class == "waf" {
+			shapeL, shapeR = "{", "}"
+		}
+		class := ""
+		if n.Class != "" {
+			class = ":::" + n.Class
+		}
+		fmt.Fprintf(&b, "%s%s%s\"%s\"%s%s\n", indent, n.ID, shapeL, mermaidSafe(n.Label), shapeR, class)
+	}
+
+	for _, n := range roots {
+		writeNode(n, "  ")
+	}
+
+	b.WriteString("\n")
+	for _, e := range g.Edges {
+		arr := "-->"
+		if e.Class == "dotted" {
+			arr = "-.->"
+		} else if e.Class == "link" {
+			arr = "---"
+		}
+		if e.Label != "" {
+			fmt.Fprintf(&b, "  %s %s|%s| %s\n", e.Source, arr, mermaidSafe(e.Label), e.Target)
+		} else {
+			fmt.Fprintf(&b, "  %s %s %s\n", e.Source, arr, e.Target)
+		}
+	}
+
 	defs := []string{
 		"classDef root fill:#0b3542,stroke:#20d9ff,color:#d9f6ff,stroke-width:2px",
 		"classDef dns fill:#122231,stroke:#20d9ff,color:#b9effa",
@@ -120,30 +181,46 @@ func (b *archBuilder) classDefs() {
 		"classDef web fill:#122231,stroke:#ffca5c,color:#ffe3b0",
 		"classDef waf fill:#231a10,stroke:#ffca5c,color:#ffca5c",
 		"classDef danger fill:#33101c,stroke:#ff637d,color:#ffc2cc",
+		"classDef group fill:transparent,stroke:#203548,stroke-width:1px,stroke-dasharray:5 5",
 		"classDef muted fill:#0d1924,stroke:#2a3f4d,color:#718a99,stroke-dasharray:3",
 	}
+	b.WriteString("\n")
 	for _, d := range defs {
-		b.lines = append(b.lines, "  "+d)
+		b.WriteString("  " + d + "\n")
 	}
+	return b.String()
 }
 
-func (b *archBuilder) String() string {
-	all := make([]string, 0, len(b.lines)+len(b.edges)+2)
-	all = append(all, "graph TD")
-	all = append(all, b.lines...)
-	if len(b.edges) > 0 {
-		all = append(all, "")
-		all = append(all, b.edges...)
+// CytoscapeJSON renders the graph elements as a JSON array for Cytoscape.js.
+func (g *archGraph) CytoscapeJSON() string {
+	type cyData map[string]any
+	type cyElement struct {
+		Data    cyData `json:"data"`
+		Classes string `json:"classes,omitempty"`
 	}
-	return strings.Join(all, "\n")
+	var elements []cyElement
+	for _, n := range g.Nodes {
+		d := cyData{"id": n.ID, "label": strings.ReplaceAll(n.Label, "<br/>", "\n")}
+		if n.Parent != "" {
+			d["parent"] = n.Parent
+		}
+		elements = append(elements, cyElement{Data: d, Classes: n.Class})
+	}
+	for i, e := range g.Edges {
+		d := cyData{"id": fmt.Sprintf("e%d", i), "source": e.Source, "target": e.Target}
+		if e.Label != "" {
+			d["label"] = e.Label
+		}
+		elements = append(elements, cyElement{Data: d, Classes: e.Class})
+	}
+	out, _ := json.Marshal(elements)
+	return string(out)
 }
 
 // ─── Diagram generation ───────────────────────────────────
 
-// ArchitectureDiagram renders one target's recon data as a mermaid
-// flowchart string. The output is safe for embedding in HTML <pre
-// class="mermaid"> or markdown ```mermaid blocks.
-func ArchitectureDiagram(r *scanner.Result) string {
+// BuildArchitectureGraph builds the node/edge model for a target.
+func BuildArchitectureGraph(r *scanner.Result) *archGraph {
 	b := newArchBuilder()
 
 	rootID := b.node("root", r.Target, "root")
@@ -288,8 +365,7 @@ func ArchitectureDiagram(r *scanner.Result) string {
 		b.closeSub()
 	}
 
-	b.classDefs()
-	return b.String()
+	return b.graph
 }
 
 // ─── Markdown document ────────────────────────────────────
@@ -317,7 +393,7 @@ func ArchitectureMarkdown(results []*scanner.Result, generated time.Time) string
 			fmt.Fprintf(&b, "- **Zone transfers:** %d\n", len(r.ZoneTransfer))
 		}
 		b.WriteString("\n```mermaid\n")
-		b.WriteString(ArchitectureDiagram(r))
+		b.WriteString(BuildArchitectureGraph(r).Mermaid())
 		b.WriteString("\n```\n")
 	}
 	return b.String()

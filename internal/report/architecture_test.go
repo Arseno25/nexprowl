@@ -11,7 +11,8 @@ import (
 
 func TestArchitectureDiagramEmpty(t *testing.T) {
 	r := &scanner.Result{Target: "bare.example"}
-	d := ArchitectureDiagram(r)
+	g := BuildArchitectureGraph(r)
+	d := g.Mermaid()
 	if !strings.Contains(d, "graph TD") {
 		t.Fatal("missing graph header")
 	}
@@ -29,7 +30,7 @@ func TestArchitectureDiagramEmpty(t *testing.T) {
 
 func TestArchitectureDiagramFull(t *testing.T) {
 	results := richResults()
-	d := ArchitectureDiagram(results[0])
+	d := BuildArchitectureGraph(results[0]).Mermaid()
 
 	for _, want := range []string{
 		"graph TD",
@@ -61,7 +62,7 @@ func TestArchitectureDiagramTruncation(t *testing.T) {
 			Host: strings.Repeat("s", i+1) + ".trunc.example",
 		})
 	}
-	d := ArchitectureDiagram(r)
+	d := BuildArchitectureGraph(r).Mermaid()
 	if !strings.Contains(d, "+8 more") {
 		t.Errorf("expected truncation marker '+8 more' in:\n%s", d)
 	}
@@ -151,9 +152,8 @@ func TestHTMLContainsArchSection(t *testing.T) {
 	html := string(body)
 	for _, want := range []string{
 		"Architecture map",
-		`class="mermaid"`,
-		"mermaid.esm.min.mjs",
-		"graph TD",
+		`class="arch-cy"`,
+		"cytoscape",
 	} {
 		if !strings.Contains(html, want) {
 			t.Errorf("HTML report missing %q", want)
