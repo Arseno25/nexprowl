@@ -42,6 +42,9 @@ func PrintHelp() {
 
 	section("PERFORMANCE & STEALTH")
 	row("-stealth", "low-noise mode: rate=10, workers=10, timeout=8, passive-only")
+	row("-proxy URL", "route traffic via proxy: http:// | https:// | socks5:// | socks5h://")
+	row("-doh", "DNS-over-HTTPS via Cloudflare (hides DNS from local network)")
+	row("-jitter MS", "random 0..MS delay between requests (breaks rate detection)")
 	row("-t N", "workers per module (default 300)")
 	row("-T N", "concurrent targets in batch mode (default 5)")
 	row("-timeout N", "network timeout in seconds (default 4)")
@@ -82,6 +85,7 @@ func PrintHelp() {
 		{"nexprowl example.com -m dns", "dns records + zone transfer attempt"},
 		{"nexprowl example.com -m dns,vhost", "hunt hidden virtual hosts"},
 		{"nexprowl -stealth example.com", "one-flag stealth: low workers, rate limit, passive-only"},
+		{"nexprowl -stealth -doh -jitter 500 -proxy socks5://127.0.0.1:9050 example.com", "full evasion: tor proxy + DoH + jitter"},
 		{"nexprowl example.com -r resolvers.txt -rate 50", "custom resolvers + rate limit"},
 		{"nexprowl -l targets.txt -passive -silent -o results/subs.jsonl", "passive, pipe-ready for jq/nuclei"},
 		{"nexprowl -l targets.txt -o results/report.md", "markdown report for bug bounty notes"},

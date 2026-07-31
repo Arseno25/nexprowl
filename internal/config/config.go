@@ -91,6 +91,9 @@ func Load() (*Config, error) {
 		passive     = flag.Bool("passive", false, "passive subdomains only (skip bruteforce)")
 		probeSubs   = flag.Bool("probe-subs", true, "HTTP-probe discovered subdomains")
 		stealth     = flag.Bool("stealth", false, "low-noise mode (rate=10, workers=10, timeout=8, passive)")
+		proxyURL    = flag.String("proxy", "", "route traffic through proxy (http:// | https:// | socks5:// | socks5h://)")
+		doh         = flag.Bool("doh", false, "DNS-over-HTTPS via Cloudflare (hides DNS from local network)")
+		jitter      = flag.Int("jitter", 0, "random 0..N ms delay between requests (breaks rate-based detection)")
 		output      = flag.String("o", "results", "output path: file (.json/.jsonl/.csv/.md/.html/.txt) or directory")
 		format      = flag.String("format", "", "output format override: json|jsonl|csv|md|html|txt")
 		emit        = flag.String("emit", "", "stdout findings: subdomains|urls|hostports|ips|endpoints|jsonl")
@@ -110,6 +113,11 @@ func Load() (*Config, error) {
 	*workers = atLeast(*workers, 1)
 	*concurrency = atLeast(*concurrency, 1)
 	*timeout = atLeast(*timeout, 1)
+	*jitter = atLeast(*jitter, 0)
+
+	if _, err := scanner.ParseProxyURL(strings.TrimSpace(*proxyURL)); err != nil {
+		return nil, err
+	}
 
 	cfg := &Config{
 		Output:   *output,
@@ -267,6 +275,9 @@ func Load() (*Config, error) {
 		ProbeBoth:   *probeBoth,
 		Active:      *active,
 		Stealth:     *stealth,
+		ProxyURL:    strings.TrimSpace(*proxyURL),
+		DoH:         *doh,
+		JitterMs:    *jitter,
 		CrawlDepth:  atLeast(*crawlDepth, 0),
 		CrawlMax:    atLeast(*crawlMax, 1),
 		Screenshot:  *screenshot,

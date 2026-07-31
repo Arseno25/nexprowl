@@ -26,6 +26,9 @@ type Options struct {
 	ProbeBoth   bool
 	Active      bool
 	Stealth     bool
+	ProxyURL    string // e.g. "socks5://127.0.0.1:9050" or "http://proxy:8080"
+	DoH         bool   // DNS-over-HTTPS via Cloudflare
+	JitterMs    int    // random delay 0..N ms between requests
 	CrawlDepth  int
 	CrawlMax    int
 	Screenshot  bool
