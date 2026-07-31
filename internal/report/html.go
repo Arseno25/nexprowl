@@ -327,13 +327,15 @@ document.addEventListener('DOMContentLoaded', () => {
       style: [
         { selector: 'node', style: {
           'label': 'data(label)', 'text-wrap': 'wrap', 'text-valign': 'center', 'text-halign': 'center',
-          'shape': 'round-rectangle', 'padding': '10px', 'font-family': 'Inter, sans-serif',
+          'shape': 'round-rectangle', 'padding': '14px', 'font-family': 'Inter, sans-serif',
           'font-size': '12px', 'color': '#e8f1f7', 'background-color': '#122231',
-          'border-width': 1, 'border-color': '#4a6572'
+          'border-width': 1, 'border-color': '#4a6572',
+          'width': 'label', 'height': 'label'
         }},
         { selector: ':parent', style: {
           'text-valign': 'top', 'text-halign': 'center', 'background-color': 'rgba(13, 25, 36, 0.5)',
-          'border-color': '#203548', 'border-width': 1, 'border-style': 'dashed', 'padding': '15px'
+          'border-color': '#203548', 'border-width': 1, 'border-style': 'dashed', 'padding': '20px',
+          'text-margin-y': -8, 'font-weight': 'bold', 'color': '#8fa6b8'
         }},
         { selector: '.root', style: { 'background-color': '#0b3542', 'border-color': '#20d9ff', 'border-width': 2 } },
         { selector: '.dns', style: { 'border-color': '#20d9ff' } },
