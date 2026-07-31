@@ -66,7 +66,13 @@ func Save(path string, format Format, results []*scanner.Result) ([]string, erro
 		if err := writeCombined(path, format, results); err != nil {
 			return nil, err
 		}
-		return []string{path}, nil
+		written := []string{path}
+		archPath := architectureCompanionPath(path)
+		if err := writeArchitectureMD(archPath, results); err != nil {
+			return written, err
+		}
+		written = append(written, archPath)
+		return written, nil
 	}
 
 	// directory mode
@@ -96,6 +102,12 @@ func Save(path string, format Format, results []*scanner.Result) ([]string, erro
 		return written, err
 	}
 	written = append(written, htmlReport)
+
+	archReport := filepath.Join(path, "architecture.md")
+	if err := writeArchitectureMD(archReport, results); err != nil {
+		return written, err
+	}
+	written = append(written, archReport)
 
 	manifestPath := filepath.Join(path, "manifest.json")
 	if err := writeManifest(manifestPath, NewManifest(results)); err != nil {

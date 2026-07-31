@@ -9,8 +9,13 @@ import (
 	"nexprowl/internal/scanner"
 )
 
+type htmlTarget struct {
+	*scanner.Result
+	Diagram string
+}
+
 type htmlReportData struct {
-	Results   []*scanner.Result
+	Results   []htmlTarget
 	Generated string
 	Subs      int
 	Ports     int
@@ -21,10 +26,13 @@ type htmlReportData struct {
 
 func writeHTML(path string, results []*scanner.Result) error {
 	data := htmlReportData{
-		Results:   results,
 		Generated: time.Now().Format("02 Jan 2006, 15:04 MST"),
 	}
 	for _, r := range results {
+		data.Results = append(data.Results, htmlTarget{
+			Result:  r,
+			Diagram: ArchitectureDiagram(r),
+		})
 		data.Subs += len(r.Subdomains)
 		data.Ports += len(r.Ports)
 		data.Live += len(r.Web)
@@ -106,6 +114,9 @@ a{color:var(--cyan);text-decoration:none} a:hover{text-decoration:underline}
 .kv dt{color:var(--muted)}.kv dd{margin:0;overflow-wrap:anywhere}
 .records{max-height:260px;overflow:auto;margin:8px 0 0;padding:12px;border-radius:8px;background:#071018;color:#b9cad6;white-space:pre-wrap}
 footer{padding-top:26px;text-align:center;color:var(--muted);font-size:12px}
+.arch{overflow-x:auto;margin:0 -4px}
+.mermaid{display:flex;justify-content:center;min-height:200px}
+.mermaid svg{max-width:100%}
 @media(max-width:800px){main{width:min(100% - 20px,1180px);padding-top:28px}header,.target-head{display:block}.chips{justify-content:flex-start;margin-top:14px}.summary{grid-template-columns:repeat(2,1fr)}.summary .metric:first-child{grid-column:1/-1}.content{grid-template-columns:1fr}.panel.wide{grid-column:auto}}
 @media(max-width:520px){.target-stats{grid-template-columns:repeat(2,1fr)}.summary{grid-template-columns:1fr}.summary .metric:first-child{grid-column:auto}.content{padding:12px}.target-head{padding:18px}}
 @media print{:root{color-scheme:light;--bg:#fff;--surface:#fff;--surface2:#fff;--line:#d9e0e5;--text:#16232d;--muted:#536875}body{background:#fff}.target,.metric,.panel{box-shadow:none}.target{break-inside:avoid}main{width:100%;padding:0}}
@@ -146,6 +157,13 @@ footer{padding-top:26px;text-align:center;color:var(--muted);font-size:12px}
   </div>
 
   <div class="content">
+    {{if .Diagram}}
+    <section class="panel wide">
+      <h3>Architecture map</h3>
+      <div class="arch"><pre class="mermaid">{{.Diagram}}</pre></div>
+    </section>
+    {{end}}
+
     {{with .DNS}}
     <section class="panel">
       <h3>DNS records</h3>
@@ -289,6 +307,14 @@ footer{padding-top:26px;text-align:center;color:var(--muted);font-size:12px}
 
 <footer>NexProwl · all-in-one domain reconnaissance · by shadow0x0</footer>
 </main>
+<script type="module">
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+mermaid.initialize({
+  startOnLoad:true,theme:'dark',securityLevel:'strict',
+  flowchart:{curve:'basis',useMaxWidth:true,htmlLabels:true},
+  themeVariables:{fontFamily:'Inter,ui-sans-serif,system-ui,sans-serif',lineColor:'#4a6572',primaryColor:'#122231',primaryTextColor:'#e8f1f7',primaryBorderColor:'#203548'}
+});
+</script>
 </body>
 </html>
 `
