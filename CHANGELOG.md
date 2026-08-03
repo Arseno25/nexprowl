@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Homebrew tap.** `brew install Arseno25/tap/nexprowl` on macOS and Linux.
+  GoReleaser commits the cask to `Arseno25/homebrew-tap` on every release. The
+  cask clears the Gatekeeper quarantine flag on install, so macOS users no
+  longer need to run `xattr` by hand.
+- **`.deb` and `.rpm` packages** for linux/amd64 and linux/arm64, attached to
+  every release.
+- **Signed APT repository** published to GitHub Pages, so Debian and Ubuntu
+  users can `apt install nexprowl` and receive updates through `apt upgrade`.
+  Indices are GPG-signed and scoped with `signed-by=`.
+
 ## [0.1.0] - 2026-08-03
 
 First public release. NexProwl was developed privately before this point; the

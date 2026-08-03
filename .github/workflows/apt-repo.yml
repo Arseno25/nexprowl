@@ -1,0 +1,216 @@
+name: APT repository
+
+# Publishes a signed APT repository to GitHub Pages so users can run
+# `apt install nexprowl` instead of downloading a .deb by hand.
+#
+# Runs after a release is published, picks up that release's .deb artifacts,
+# adds them to the pool, regenerates the indices, signs them, and commits the
+# result to the gh-pages branch.
+#
+# Required repository secrets:
+#   APT_GPG_PRIVATE_KEY  ASCII-armored private key used to sign the indices
+#   APT_GPG_PASSPHRASE   passphrase for that key
+# Setup instructions: docs/GITHUB_SETUP.md
+
+on:
+  release:
+    types: [published]
+  # Lets you rebuild the repository from every published release without
+  # cutting a new one — useful after changing this workflow.
+  workflow_dispatch:
+    inputs:
+      rebuild_all:
+        description: "Rebuild the pool from every published release"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  # Two releases publishing at once would race on the gh-pages branch.
+  group: apt-repo
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Build and publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Verify signing key is configured
+        env:
+          KEY: ${{ secrets.APT_GPG_PRIVATE_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "::error::APT_GPG_PRIVATE_KEY is not set. See docs/GITHUB_SETUP.md."
+            exit 1
+          fi
+
+      - name: Checkout gh-pages
+        uses: actions/checkout@v7
+        with:
+          ref: gh-pages
+          # An empty gh-pages branch is a valid starting point.
+          fetch-depth: 0
+
+      - name: Install packaging tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends apt-utils dpkg-dev
+
+      - name: Download .deb artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REBUILD_ALL: ${{ inputs.rebuild_all }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          mkdir -p apt/pool/main
+
+          if [ "${REBUILD_ALL:-false}" = "true" ] || [ -z "${TAG:-}" ]; then
+            echo "Rebuilding pool from every published release"
+            rm -rf apt/pool
+            mkdir -p apt/pool/main
+            tags="$(gh release list --repo "$GITHUB_REPOSITORY" --limit 200 \
+              --json tagName,isDraft,isPrerelease \
+              -q '.[] | select(.isDraft == false and .isPrerelease == false) | .tagName')"
+          else
+            tags="$TAG"
+          fi
+
+          for tag in $tags; do
+            echo "==> $tag"
+            gh release download "$tag" --repo "$GITHUB_REPOSITORY" \
+              --dir apt/pool/main --pattern '*.deb' --clobber || {
+                echo "no .deb assets on $tag, skipping"
+                continue
+              }
+          done
+
+          ls -la apt/pool/main
+          if [ -z "$(find apt/pool/main -name '*.deb' -print -quit)" ]; then
+            echo "::error::No .deb packages found. Nothing to publish."
+            exit 1
+          fi
+
+      - name: Generate indices
+        working-directory: apt
+        run: |
+          set -euo pipefail
+          for arch in amd64 arm64; do
+            dir="dists/stable/main/binary-$arch"
+            mkdir -p "$dir"
+            # --multiversion keeps older releases installable alongside the newest.
+            dpkg-scanpackages --arch "$arch" --multiversion pool/ > "$dir/Packages"
+            gzip -9kf "$dir/Packages"
+            echo "$arch: $(grep -c '^Package:' "$dir/Packages") package(s)"
+          done
+
+          apt-ftparchive \
+            -o APT::FTPArchive::Release::Origin="NexProwl" \
+            -o APT::FTPArchive::Release::Label="NexProwl" \
+            -o APT::FTPArchive::Release::Suite="stable" \
+            -o APT::FTPArchive::Release::Codename="stable" \
+            -o APT::FTPArchive::Release::Components="main" \
+            -o APT::FTPArchive::Release::Architectures="amd64 arm64" \
+            -o APT::FTPArchive::Release::Description="NexProwl reconnaissance engine" \
+            release dists/stable > dists/stable/Release
+
+      - name: Sign indices
+        working-directory: apt
+        env:
+          APT_GPG_PRIVATE_KEY: ${{ secrets.APT_GPG_PRIVATE_KEY }}
+          APT_GPG_PASSPHRASE: ${{ secrets.APT_GPG_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          export GNUPGHOME
+          GNUPGHOME="$(mktemp -d)"
+          chmod 700 "$GNUPGHOME"
+
+          printf '%s' "$APT_GPG_PRIVATE_KEY" | gpg --batch --quiet --import
+          keyid="$(gpg --list-secret-keys --with-colons | awk -F: '/^sec:/ {print $5; exit}')"
+          if [ -z "$keyid" ]; then
+            echo "::error::No secret key found after import. Is APT_GPG_PRIVATE_KEY armored and complete?"
+            exit 1
+          fi
+
+          sign() {
+            gpg --batch --yes --pinentry-mode loopback \
+              --passphrase "$APT_GPG_PASSPHRASE" --local-user "$keyid" "$@"
+          }
+          # InRelease (inline signed) is what modern apt prefers; Release.gpg
+          # is kept for older clients.
+          sign --clearsign  -o dists/stable/InRelease   dists/stable/Release
+          sign --detach-sign --armor -o dists/stable/Release.gpg dists/stable/Release
+
+          # Public key in the binary form `signed-by=` expects.
+          gpg --export "$keyid" > nexprowl-archive-keyring.gpg
+
+          # Never leave key material on the runner's disk.
+          rm -rf "$GNUPGHOME"
+
+      - name: Verify the signature
+        working-directory: apt
+        run: |
+          set -euo pipefail
+          export GNUPGHOME
+          GNUPGHOME="$(mktemp -d)"
+          chmod 700 "$GNUPGHOME"
+          gpg --batch --quiet --import nexprowl-archive-keyring.gpg
+          # Fails the build rather than shipping a repository apt will reject.
+          gpg --batch --verify dists/stable/InRelease
+          gpg --batch --verify dists/stable/Release.gpg dists/stable/Release
+          rm -rf "$GNUPGHOME"
+
+      - name: Write landing page
+        run: |
+          cat > apt/index.html <<'HTML'
+          <!doctype html>
+          <meta charset="utf-8">
+          <title>NexProwl APT repository</title>
+          <meta name="viewport" content="width=device-width,initial-scale=1">
+          <style>
+            body{font:16px/1.6 system-ui,sans-serif;max-width:52rem;margin:3rem auto;padding:0 1rem}
+            pre{background:#f4f4f5;padding:1rem;overflow-x:auto;border-radius:6px}
+            code{font-family:ui-monospace,monospace}
+            .warn{border-left:4px solid #d97706;padding:.5rem 1rem;background:#fffbeb}
+            @media(prefers-color-scheme:dark){
+              body{background:#0b0b0f;color:#e5e5e5}
+              pre{background:#18181b}
+              .warn{background:#1c1917}
+            }
+          </style>
+          <h1>NexProwl APT repository</h1>
+          <p><a href="https://github.com/Arseno25/nexprowl">github.com/Arseno25/nexprowl</a></p>
+          <pre><code>curl -fsSL https://arseno25.github.io/nexprowl/apt/nexprowl-archive-keyring.gpg \
+            | sudo tee /usr/share/keyrings/nexprowl-archive-keyring.gpg &gt; /dev/null
+
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/nexprowl-archive-keyring.gpg] \
+          https://arseno25.github.io/nexprowl/apt stable main" \
+            | sudo tee /etc/apt/sources.list.d/nexprowl.list
+
+          sudo apt update &amp;&amp; sudo apt install nexprowl</code></pre>
+          <p>Architectures: <code>amd64</code>, <code>arm64</code>.</p>
+          <p class="warn"><strong>Authorized testing only.</strong> NexProwl sends real
+          traffic to the targets you give it. Use it only against systems you own or
+          have written permission to test.</p>
+          HTML
+
+          # Stops GitHub Pages from running the output through Jekyll, which
+          # would drop the dists/ directory.
+          touch .nojekyll
+
+      - name: Commit to gh-pages
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A apt .nojekyll
+          if git diff --cached --quiet; then
+            echo "Repository unchanged, nothing to commit."
+            exit 0
+          fi
+          git commit -m "apt: publish ${{ github.event.release.tag_name || 'rebuild' }}"
+          git push origin gh-pages
