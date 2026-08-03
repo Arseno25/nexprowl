@@ -68,7 +68,7 @@ jobs:
           go-version-file: go.mod
           cache: true
       # Catches a broken .goreleaser.yaml on the PR instead of on the tag.
-      - uses: goreleaser/goreleaser-action@v6
+      - uses: goreleaser/goreleaser-action@v7
         with:
           version: "~> v2"
           args: check
