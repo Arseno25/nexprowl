@@ -57,8 +57,8 @@ checksum:
   name_template: "checksums.txt"
   algorithm: sha256
 
-# Linux packages. The .deb files are also consumed by the apt-repo workflow,
-# which publishes them as a signed APT repository on GitHub Pages.
+# Linux packages, attached to each release. There is no hosted APT or DNF
+# repository, so these do not auto-update.
 nfpms:
   - id: nexprowl
     ids:
@@ -96,54 +96,6 @@ nfpms:
     # dependency of a tool that works fine without it.
     suggests:
       - chromium
-
-# Homebrew tap. GoReleaser commits the cask to Arseno25/homebrew-tap on every
-# release, so packaging/ holds no hand-maintained formula.
-#
-# Casks, not formulae: Homebrew moved pre-built binaries to casks, and
-# GoReleaser deprecated `brews` to match.
-#
-# Requires GIT_TOKEN: the built-in GITHUB_TOKEN cannot push to another repo.
-homebrew_casks:
-  - name: nexprowl
-    ids:
-      - nexprowl
-    binaries:
-      - nexprowl
-    repository:
-      owner: Arseno25
-      name: homebrew-tap
-      branch: main
-      token: "{{ .Env.GIT_TOKEN }}"
-    directory: Casks
-    homepage: https://github.com/Arseno25/nexprowl
-    description: Fast, single-binary reconnaissance engine for DNS, subdomains, ports, HTTP, TLS, virtual hosts, takeovers, and crawling
-    license: MIT
-    commit_msg_template: "nexprowl {{ .Tag }}"
-    # A pre-release tag must not become what `brew install nexprowl` resolves to.
-    skip_upload: auto
-    url:
-      # homepage and download domain differ, which `brew audit` flags otherwise.
-      verified: github.com/Arseno25/nexprowl
-    hooks:
-      post:
-        # Release binaries are not notarized, so Gatekeeper would refuse to run
-        # them. Homebrew's own download is trusted, so clearing the quarantine
-        # flag here is what makes `brew install` work without a manual xattr.
-        install: |
-          if OS.mac?
-            system_command "/usr/bin/xattr",
-                           args: ["-dr", "com.apple.quarantine", "#{staged_path}/nexprowl"]
-          end
-    caveats: |
-      NexProwl is for authorized security testing only. Scanning systems you do
-      not own or have written permission to test may be illegal.
-
-      The -screenshot flag requires an installed Chrome, Chromium, or Edge.
-
-      Getting started:
-        nexprowl --help
-        nexprowl example.com
 
 snapshot:
   version_template: "{{ incpatch .Version }}-next"

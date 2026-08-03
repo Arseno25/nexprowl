@@ -48,7 +48,6 @@ jobs:
           version: "~> v2"
           args: release --clean
         env:
+          # Nothing here writes outside this repository, so the built-in
+          # GITHUB_TOKEN would also work and is the safer default.
           GITHUB_TOKEN: ${{ secrets.GIT_TOKEN }}
-          # The brews block pushes the formula to Arseno25/homebrew-tap, a
-          # different repository, which the built-in GITHUB_TOKEN cannot do.
-          GIT_TOKEN: ${{ secrets.GIT_TOKEN }}

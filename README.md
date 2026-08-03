@@ -122,68 +122,19 @@ scan logic never touches the terminal and `-silent` costs nothing.
 
 ## Installation
 
-Pick whichever matches your platform. Homebrew and APT keep NexProwl updated
-with the rest of your system; the rest need a manual upgrade.
+NexProwl is a single Go binary. The two shortest routes both **compile it on
+your own machine** — no release download, nothing to trust but the source.
 
-| Platform | Command |
+| You have | Command |
 |---|---|
-| macOS / Linux | `brew install Arseno25/tap/nexprowl` |
-| Debian / Ubuntu | `apt install nexprowl` — [after adding the repo](#debian--ubuntu-apt) |
-| Fedora / RHEL | `rpm -i nexprowl_<version>_linux_<arch>.rpm` from the release page |
-| Windows | [download a release](#download-a-release) |
-| Any, with Go | `go install github.com/Arseno25/nexprowl@latest` |
-| Any, with Docker | [build the image](#docker) |
+| Go 1.24+ | `go install github.com/Arseno25/nexprowl@latest` |
+| Go 1.24+ and git | `git clone ... && make install` — [below](#clone-and-build) |
+| Neither | [download a release binary](#download-a-release) |
+| Docker | [build the image](#docker) |
 
-### Homebrew
-
-Works on macOS and Linux.
-
-```bash
-brew install Arseno25/tap/nexprowl
-nexprowl version
-```
-
-Upgrade with `brew upgrade nexprowl`, remove with `brew uninstall nexprowl`.
-
-This is the smoothest route on macOS: the cask clears the Gatekeeper quarantine
-flag during install, so you never hit the "cannot be opened because the
-developer cannot be verified" dialog that a browser download triggers.
-
-### Debian / Ubuntu (APT)
-
-Add the signed repository once, then NexProwl updates with `apt upgrade` like
-anything else. `amd64` and `arm64` are both published.
-
-```bash
-curl -fsSL https://arseno25.github.io/nexprowl/apt/nexprowl-archive-keyring.gpg \
-  | sudo tee /usr/share/keyrings/nexprowl-archive-keyring.gpg > /dev/null
-
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/nexprowl-archive-keyring.gpg] https://arseno25.github.io/nexprowl/apt stable main" \
-  | sudo tee /etc/apt/sources.list.d/nexprowl.list
-
-sudo apt update && sudo apt install nexprowl
-```
-
-The repository indices are GPG-signed, and `signed-by=` scopes that key to this
-repository only — it cannot be used to vouch for packages from anywhere else on
-your system.
-
-To remove it:
-
-```bash
-sudo apt remove nexprowl
-sudo rm /etc/apt/sources.list.d/nexprowl.list /usr/share/keyrings/nexprowl-archive-keyring.gpg
-```
-
-### Fedora / RHEL / openSUSE
-
-`.rpm` packages are attached to every
-[release](https://github.com/Arseno25/nexprowl/releases/latest). There is no
-hosted YUM/DNF repository yet, so install the file directly:
-
-```bash
-sudo rpm -i nexprowl_0.1.0_linux_amd64.rpm
-```
+`go install` *is* clone-and-build: it fetches the source, compiles it locally,
+and drops the binary on your `PATH` in one command. Clone manually only when you
+want to read the code, modify it, or run the tests.
 
 ### Go install
 
@@ -199,6 +150,52 @@ there already.
 > A binary installed this way reports `dev` for its version — the release
 > metadata is injected by the linker during a release build, and `go install`
 > does not apply those flags.
+
+### Clone and build
+
+```bash
+git clone https://github.com/Arseno25/nexprowl.git
+cd nexprowl
+make install     # or: make build, to leave ./nexprowl in the working directory
+nexprowl --help
+```
+
+`make install` puts the binary in `$(go env GOPATH)/bin`, stamping the version,
+commit, and build date so `nexprowl version` reports something meaningful rather
+than `dev`.
+
+No make? The plain Go commands work fine:
+
+```bash
+go build -trimpath -ldflags="-s -w" -o nexprowl .    # ./nexprowl
+go install .                                          # onto your PATH
+```
+
+Windows PowerShell:
+
+```powershell
+go build -trimpath -ldflags="-s -w" -o nexprowl.exe .
+.
+exprowl.exe --help
+```
+
+The CLI entrypoint is the module root package, so the build path is `.` rather
+than `./cmd/nexprowl`.
+
+Other useful targets — run `make help` for the full list:
+
+| Target | What it does |
+|---|---|
+| `make build` | Build `./nexprowl` with version metadata |
+| `make install` | Build and install onto your `PATH` |
+| `make test` | Run the test suite |
+| `make race` | Run tests under the race detector |
+| `make cover` | Run tests and enforce the 70% coverage floor |
+| `make check` | Everything CI checks |
+| `make clean` | Remove build and test artifacts |
+
+Platform-by-platform notes live in [docs/USAGE.md](docs/USAGE.md).
+
 
 ### Download a release
 
@@ -226,36 +223,42 @@ Expand-Archive .\nexprowl_0.1.0_windows_amd64.zip -DestinationPath .\nexprowl
 .\nexprowl\nexprowl.exe version
 ```
 
-On macOS, Gatekeeper will block the binary on first run because the release is
-not notarized. Clear the quarantine attribute:
+`.deb` and `.rpm` packages for linux/amd64 and linux/arm64 are attached to the
+same release:
+
+```bash
+sudo dpkg -i nexprowl_0.1.0_linux_amd64.deb     # Debian / Ubuntu
+sudo rpm -i  nexprowl_0.1.0_linux_amd64.rpm     # Fedora / RHEL / openSUSE
+```
+
+There is no hosted APT or DNF repository, so these do not auto-update — reinstall
+to upgrade.
+
+#### If your OS blocks the download
+
+Both cases below apply to **downloaded** binaries only. Building from source
+avoids them entirely, which is one more reason `go install` is the recommended
+route.
+
+**macOS.** Gatekeeper blocks the binary on first run because the release is not
+notarized. The quarantine flag is set by the *downloading application*, so a
+`curl` download is unaffected while a browser download is not. Clear it with:
 
 ```bash
 xattr -d com.apple.quarantine /usr/local/bin/nexprowl
 ```
 
-### Build from source
+**Windows.** The archive carries a Mark of the Web, which SmartScreen may act
+on. Clear it with:
 
-```bash
-git clone https://github.com/Arseno25/nexprowl.git
-cd nexprowl
-go build -trimpath -ldflags="-s -w" -o nexprowl .
-./nexprowl --help
+```powershell
+Unblock-File .\nexprowl.exe
 ```
 
-The CLI entrypoint is the module root package, so the build path is `.` rather
-than `./cmd/nexprowl`.
-
-To stamp version metadata into a local build:
-
-```bash
-go build -trimpath -ldflags="-s -w \
-  -X github.com/Arseno25/nexprowl/internal/scanner.Version=$(git describe --tags --always) \
-  -X github.com/Arseno25/nexprowl/internal/scanner.Commit=$(git rev-parse HEAD) \
-  -X github.com/Arseno25/nexprowl/internal/scanner.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-  -o nexprowl .
-```
-
-Platform-by-platform build notes live in [docs/USAGE.md](docs/USAGE.md).
+Microsoft Defender and other antivirus products also flag recon tooling as
+`HackTool`/`PUA` on behaviour rather than signature — this is common to the whole
+category and is not something a code-signing certificate fixes. If that happens,
+build from source or add an exclusion for a path you control.
 
 ### Docker
 
@@ -275,12 +278,14 @@ No image is published to a registry yet.
 
 ### Not available yet
 
-There is **no** Scoop bucket, AUR package, hosted DNF/YUM repository,
-distribution-official package (Debian, Ubuntu, Fedora, Kali, Arch), or
-published container image. See the [Roadmap](#roadmap).
+There is **no** Homebrew formula or tap, Scoop bucket, AUR package, APT or
+DNF repository, distribution-official package (Debian, Ubuntu, Fedora, Kali,
+Arch), or published container image. `brew install nexprowl` and
+`apt install nexprowl` do **not** work.
 
-NexProwl is **not** in Homebrew core — `brew install nexprowl` without the
-`Arseno25/tap/` prefix installs something else, or nothing.
+Building from source is the supported path, and it is deliberately the simplest
+one: `go install` compiles on your machine in a single command. See the
+[Roadmap](#roadmap) for what may come later.
 
 Anyone distributing a "NexProwl" package through a channel not listed above is
 not doing so with the maintainer's involvement.
@@ -786,11 +791,13 @@ something large.
 
 **Distribution**
 
-- [x] Homebrew tap — `brew install Arseno25/tap/nexprowl`
-- [x] `.deb` / `.rpm` packages, and a signed APT repository
+- [x] `.deb` / `.rpm` packages attached to each release
+- [ ] Homebrew tap — needs a second repository and a token that can write to it
+- [ ] Hosted APT / DNF repositories — need a GPG signing key kept in CI, which
+      is a credential that can vouch for packages installed as root, so it is
+      not something to set up casually
 - [ ] Scoop bucket (template in [`packaging/scoop/`](packaging/scoop/nexprowl.json))
 - [ ] Published container image on GHCR
-- [ ] Hosted DNF/YUM repository
 - [ ] AUR package
 - [ ] Submission to distribution-official repositories (Debian, Kali) — needs a
       distro maintainer sponsor, so this is a long game rather than a task

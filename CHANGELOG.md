@@ -9,15 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Homebrew tap.** `brew install Arseno25/tap/nexprowl` on macOS and Linux.
-  GoReleaser commits the cask to `Arseno25/homebrew-tap` on every release. The
-  cask clears the Gatekeeper quarantine flag on install, so macOS users no
-  longer need to run `xattr` by hand.
+- **`Makefile`** for the clone-and-build path: `make build`, `make install`,
+  `make test`, `make race`, `make cover`, `make check`, `make clean`. It stamps
+  version, commit, and build date, so a locally built binary reports a real
+  version instead of `dev`. CI builds through it so a broken target is caught.
 - **`.deb` and `.rpm` packages** for linux/amd64 and linux/arm64, attached to
-  every release.
-- **Signed APT repository** published to GitHub Pages, so Debian and Ubuntu
-  users can `apt install nexprowl` and receive updates through `apt upgrade`.
-  Indices are GPG-signed and scoped with `signed-by=`.
+  every release. There is no hosted APT or DNF repository, so these do not
+  auto-update.
+
+### Changed
+
+- **Documentation now leads with building from source.** `go install` and
+  `git clone && make install` are the recommended routes; release binaries are
+  the fallback for people without a Go toolchain. Building from source also
+  sidesteps the macOS Gatekeeper and Windows Mark-of-the-Web prompts entirely.
+- README documents what to do when an OS blocks a downloaded binary, including
+  the Windows `Unblock-File` case and the fact that antivirus products flag
+  recon tooling on behaviour, which code signing does not fix.
 
 ## [0.1.0] - 2026-08-03
 
