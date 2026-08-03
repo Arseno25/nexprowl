@@ -13,7 +13,7 @@ jobs:
     name: Validate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
@@ -35,7 +35,7 @@ jobs:
       # Required so GoReleaser can create the GitHub Release and upload assets.
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # GoReleaser needs the full history and tags to build the changelog.
           fetch-depth: 0
