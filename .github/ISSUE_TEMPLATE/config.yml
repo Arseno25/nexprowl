@@ -3,6 +3,3 @@ contact_links:
   - name: Report a security vulnerability
     url: https://github.com/Arseno25/nexprowl/security/advisories/new
     about: Private vulnerability reporting. Never file a public issue for a security bug.
-  - name: Questions and usage help
-    url: https://github.com/Arseno25/nexprowl/discussions
-    about: Ask how to use NexProwl, share pipelines, or propose ideas before opening an issue.

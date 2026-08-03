@@ -17,12 +17,11 @@
 </div>
 
 > [!WARNING]
-> **Authorized testing only.** NexProwl sends real traffic to the targets you
-> give it — port scans, virtual host fuzzing, zone transfer attempts, crawling.
-> Use it only against systems you own, have written permission to test, or that
-> are in scope for a bug bounty program you are participating in. Running it
-> against anything else may be a criminal offence in your jurisdiction. You are
-> responsible for how you use this tool. See [Disclaimer](#disclaimer).
+> **Authorized testing only.** NexProwl sends real, attributable traffic to the
+> targets you give it. Use it only on systems you own, have written permission
+> to test, or that are in scope for a bug bounty program you are in. Anything
+> else may be a criminal offence in your jurisdiction. See
+> [Disclaimer](#disclaimer).
 
 ---
 
@@ -44,7 +43,6 @@
 - [Flag reference](#flag-reference)
 - [Exit codes](#exit-codes)
 - [Development](#development)
-- [Testing](#testing)
 - [Verifying a release](#verifying-a-release)
 - [Roadmap](#roadmap)
 - [Contributing](#contributing)
@@ -122,93 +120,57 @@ scan logic never touches the terminal and `-silent` costs nothing.
 
 ## Installation
 
-NexProwl is a single Go binary. The two shortest routes both **compile it on
-your own machine** — no release download, nothing to trust but the source.
+NexProwl is one Go binary. The recommended routes **compile it on your machine** —
+no download to trust, and none of the OS security prompts a downloaded binary
+triggers.
 
 | You have | Command |
 |---|---|
 | Go 1.24+ | `go install github.com/Arseno25/nexprowl@latest` |
-| Go 1.24+ and git | `git clone ... && make install` — [below](#clone-and-build) |
-| Neither | [download a release binary](#download-a-release) |
+| Go 1.24+ and git | [`git clone` and `make install`](#clone-and-build) |
+| Neither | [download a release](#download-a-release) |
 | Docker | [build the image](#docker) |
 
-`go install` *is* clone-and-build: it fetches the source, compiles it locally,
-and drops the binary on your `PATH` in one command. Clone manually only when you
-want to read the code, modify it, or run the tests.
-
 ### Go install
-
-Requires Go 1.24 or newer.
 
 ```bash
 go install github.com/Arseno25/nexprowl@latest
 ```
 
-The binary lands in `$(go env GOPATH)/bin`. Add it to your `PATH` if it is not
-there already.
+That is clone-and-build in one command: it fetches the source, compiles locally,
+and puts the binary in `$(go env GOPATH)/bin`. Add that directory to your `PATH`
+if it is not there already.
 
-> A binary installed this way reports `dev` for its version — the release
-> metadata is injected by the linker during a release build, and `go install`
-> does not apply those flags.
+`nexprowl version` will report `dev` — release metadata is injected by the
+linker, which `go install` does not do. Use `make install` if you want a real
+version stamp.
 
 ### Clone and build
 
 ```bash
 git clone https://github.com/Arseno25/nexprowl.git
 cd nexprowl
-make install     # or: make build, to leave ./nexprowl in the working directory
+make install          # or `make build` to leave ./nexprowl in place
 nexprowl --help
 ```
 
-`make install` puts the binary in `$(go env GOPATH)/bin`, stamping the version,
-commit, and build date so `nexprowl version` reports something meaningful rather
-than `dev`.
+`make help` lists the rest: `test`, `race`, `cover`, `check`, `clean`.
 
-No make? The plain Go commands work fine:
+Without make, on any platform:
 
 ```bash
-go build -trimpath -ldflags="-s -w" -o nexprowl .    # ./nexprowl
-go install .                                          # onto your PATH
+go install .                                       # onto your PATH
+go build -trimpath -ldflags="-s -w" -o nexprowl .  # into the current directory
 ```
 
-Windows PowerShell:
-
-```powershell
-go build -trimpath -ldflags="-s -w" -o nexprowl.exe .
-.
-exprowl.exe --help
-```
-
-The CLI entrypoint is the module root package, so the build path is `.` rather
-than `./cmd/nexprowl`.
-
-Other useful targets — run `make help` for the full list:
-
-| Target | What it does |
-|---|---|
-| `make build` | Build `./nexprowl` with version metadata |
-| `make install` | Build and install onto your `PATH` |
-| `make test` | Run the test suite |
-| `make race` | Run tests under the race detector |
-| `make cover` | Run tests and enforce the 70% coverage floor |
-| `make check` | Everything CI checks |
-| `make clean` | Remove build and test artifacts |
-
-Platform-by-platform notes live in [docs/USAGE.md](docs/USAGE.md).
-
+The entrypoint is the module root package, so the build path is `.`, not
+`./cmd/nexprowl`. Per-platform notes: [docs/USAGE.md](docs/USAGE.md).
 
 ### Download a release
 
-Prebuilt static binaries for Linux, macOS, and Windows on amd64 and arm64 are
-attached to every [release](https://github.com/Arseno25/nexprowl/releases/latest).
-
-1. Open the [latest release](https://github.com/Arseno25/nexprowl/releases/latest).
-2. Download the archive matching your platform:
-   `nexprowl_<version>_<os>_<arch>.tar.gz` — or `.zip` on Windows.
-3. Download `checksums.txt` and [verify it](#verifying-a-release).
-4. Extract and install.
-
-Linux / macOS:
+Static binaries for Linux, macOS, and Windows on amd64 and arm64 are attached to
+every [release](https://github.com/Arseno25/nexprowl/releases/latest), along with
+`checksums.txt` and `.deb`/`.rpm` packages.
 
 ```bash
 tar -xzf nexprowl_0.1.0_linux_amd64.tar.gz
@@ -216,79 +178,63 @@ sudo install -m 0755 nexprowl /usr/local/bin/
 nexprowl version
 ```
 
-Windows PowerShell:
-
 ```powershell
 Expand-Archive .\nexprowl_0.1.0_windows_amd64.zip -DestinationPath .\nexprowl
 .\nexprowl\nexprowl.exe version
 ```
 
-`.deb` and `.rpm` packages for linux/amd64 and linux/arm64 are attached to the
-same release:
+Linux packages — no hosted repository, so they do not auto-update:
 
 ```bash
-sudo dpkg -i nexprowl_0.1.0_linux_amd64.deb     # Debian / Ubuntu
-sudo rpm -i  nexprowl_0.1.0_linux_amd64.rpm     # Fedora / RHEL / openSUSE
+sudo dpkg -i nexprowl_0.1.0_linux_amd64.deb    # Debian / Ubuntu
+sudo rpm  -i nexprowl_0.1.0_linux_amd64.rpm    # Fedora / RHEL / openSUSE
 ```
 
-There is no hosted APT or DNF repository, so these do not auto-update — reinstall
-to upgrade.
+Always [verify the checksum](#verifying-a-release) before running a downloaded
+binary.
 
-#### If your OS blocks the download
+#### If your OS blocks it
 
-Both cases below apply to **downloaded** binaries only. Building from source
-avoids them entirely, which is one more reason `go install` is the recommended
-route.
+Downloaded binaries only — building from source avoids all of this.
 
-**macOS.** Gatekeeper blocks the binary on first run because the release is not
-notarized. The quarantine flag is set by the *downloading application*, so a
-`curl` download is unaffected while a browser download is not. Clear it with:
+**macOS.** Releases are not notarized, so Gatekeeper blocks them. The quarantine
+flag comes from the downloading application, so `curl` is unaffected and a
+browser is not:
 
 ```bash
 xattr -d com.apple.quarantine /usr/local/bin/nexprowl
 ```
 
-**Windows.** The archive carries a Mark of the Web, which SmartScreen may act
-on. Clear it with:
+**Windows.** The archive carries a Mark of the Web that SmartScreen may act on:
 
 ```powershell
 Unblock-File .\nexprowl.exe
 ```
 
-Microsoft Defender and other antivirus products also flag recon tooling as
-`HackTool`/`PUA` on behaviour rather than signature — this is common to the whole
-category and is not something a code-signing certificate fixes. If that happens,
-build from source or add an exclusion for a path you control.
+Antivirus products also flag recon tooling as `HackTool`/`PUA` based on
+behaviour, which affects the whole category and is not something code signing
+fixes. Build from source if it happens.
 
 ### Docker
 
 ```bash
 docker build -t nexprowl:local .
-docker run --rm nexprowl:local version
 docker run --rm -v "$PWD/results:/results" nexprowl:local example.com
 ```
 
-The image is a multi-stage build on `distroless/static` — no shell, no package
-manager, running as a non-root user. **`-screenshot` does not work in it**: that
-flag drives an installed Chrome, and bundling a browser would multiply the image
-size and reintroduce a large attack surface. See the notes at the bottom of the
-[`Dockerfile`](Dockerfile).
+Multi-stage build on `distroless/static`: no shell, no package manager, non-root
+user. **`-screenshot` does not work in it** — that flag drives an installed
+Chrome, and bundling a browser would multiply the image size. See the notes at
+the bottom of the [`Dockerfile`](Dockerfile).
 
-No image is published to a registry yet.
+### Not available
 
-### Not available yet
+There is no Homebrew formula or tap, Scoop bucket, AUR package, APT or DNF
+repository, distribution package (Debian, Ubuntu, Fedora, Kali, Arch), or
+published container image. `brew install nexprowl` and `apt install nexprowl` do
+not work.
 
-There is **no** Homebrew formula or tap, Scoop bucket, AUR package, APT or
-DNF repository, distribution-official package (Debian, Ubuntu, Fedora, Kali,
-Arch), or published container image. `brew install nexprowl` and
-`apt install nexprowl` do **not** work.
-
-Building from source is the supported path, and it is deliberately the simplest
-one: `go install` compiles on your machine in a single command. See the
-[Roadmap](#roadmap) for what may come later.
-
-Anyone distributing a "NexProwl" package through a channel not listed above is
-not doing so with the maintainer's involvement.
+Building from source is the supported path. See the [Roadmap](#roadmap).
 
 ## Quick start
 
@@ -717,35 +663,26 @@ failure.
 ```bash
 git clone https://github.com/Arseno25/nexprowl.git
 cd nexprowl
-go build ./...
-go test ./...
+make check      # gofmt, vet, race tests, coverage floor, build
 ```
 
-Go 1.24+. The only direct dependency is
-[`pterm`](https://github.com/pterm/pterm) — please keep it that way.
+Go 1.24+. `make race` needs a C compiler; without one, run `make test` and let
+CI cover the race build.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide: adding a module,
-adding detection signatures, adding a passive source, and the rules every module
-must follow around context cancellation, rate limiting, and scope.
+The only direct dependency is [`pterm`](https://github.com/pterm/pterm) — please
+keep it that way.
 
-## Testing
-
-```bash
-gofmt -l .                                  # must print nothing
-go vet ./...
-go test -count=1 ./...
-go test -count=1 -race ./...                # needs a C compiler installed
-go test -coverprofile=coverage.out ./...    # project floor: 70%
-go tool cover -func=coverage.out | tail -1
-```
-
-Standard library `testing` only — no assertion libraries, no mocking frameworks.
-Tests must never depend on live internet services; use `httptest.Server`,
+Standard library `testing` only: no assertion libraries, no mocking frameworks.
+Tests must never depend on live internet services — use `httptest.Server`,
 `t.TempDir()`, and the mock resolver pattern in
-`internal/scanner/context_test.go`.
+`internal/scanner/context_test.go`. The coverage floor is 70%.
 
-CI runs format, vet, race tests, the coverage floor, a cross-compile of all six
-release targets, and `goreleaser check` on every pull request.
+CI runs all of the above on every pull request, plus a Makefile build, a
+cross-compile of all six release targets, and `goreleaser check`.
+
+[CONTRIBUTING.md](CONTRIBUTING.md) has the rest: adding a module, adding
+detection signatures, adding a passive source, and the rules every module must
+follow around context cancellation, rate limiting, and scope.
 
 ## Verifying a release
 
@@ -785,13 +722,12 @@ flags, which is expected for `go install` and `go build`.
 
 ## Roadmap
 
-Nothing here is implemented. Contributions welcome — open an
+Unchecked items are **not implemented**. Contributions welcome — open an
 [issue](https://github.com/Arseno25/nexprowl/issues/new/choose) before starting
 something large.
 
 **Distribution**
 
-- [x] `.deb` / `.rpm` packages attached to each release
 - [ ] Homebrew tap — needs a second repository and a token that can write to it
 - [ ] Hosted APT / DNF repositories — need a GPG signing key kept in CI, which
       is a credential that can vouch for packages installed as root, so it is
@@ -850,15 +786,10 @@ intentionally disabled for scan traffic but not for webhooks or DoH.
 
 ## Disclaimer
 
-NexProwl is built for **authorized** security testing: engagements you have
-written permission for, bug bounty programs whose scope covers the target, and
-assets you own.
-
-Most modules send traffic to the target. Port scanning, virtual host fuzzing,
-zone transfer attempts, crawling, and `-active` probes are observable and
-attributable to you. Running them against infrastructure you are not authorized
-to test may violate computer misuse laws in your jurisdiction, regardless of
-intent and regardless of whether anything was damaged.
+Port scanning, virtual host fuzzing, zone transfer attempts, crawling, and
+`-active` probes all leave traces that identify you. Running them without
+authorization may violate computer misuse laws in your jurisdiction regardless
+of intent, and regardless of whether anything was damaged.
 
 Scan output routinely contains sensitive information about the systems you
 tested. It is written with ordinary file permissions to wherever you point `-o`.

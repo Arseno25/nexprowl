@@ -15,14 +15,14 @@ support, no SLA, and no private help desk.
    nexprowl version
    ```
    Compare against <https://github.com/Arseno25/nexprowl/releases/latest>.
-4. Search [existing issues](https://github.com/Arseno25/nexprowl/issues?q=is%3Aissue)
-   and [discussions](https://github.com/Arseno25/nexprowl/discussions).
+4. Search [existing issues](https://github.com/Arseno25/nexprowl/issues?q=is%3Aissue),
+   including closed ones.
 
 ## Where to go
 
 | I want to… | Go here |
 |---|---|
-| Ask how to do something | [Discussions → Q&A](https://github.com/Arseno25/nexprowl/discussions) |
+| Ask how to do something | [Open an issue](https://github.com/Arseno25/nexprowl/issues/new/choose) — pick the closest template and say it is a question |
 | Report a bug | [New issue → Bug report](https://github.com/Arseno25/nexprowl/issues/new/choose) |
 | Request a feature or signature | [New issue → Feature request](https://github.com/Arseno25/nexprowl/issues/new/choose) |
 | Report a **security vulnerability** | [Private advisory](https://github.com/Arseno25/nexprowl/security/advisories/new) — **never a public issue**. See [SECURITY.md](SECURITY.md) |

@@ -5,6 +5,7 @@ import (
 
 	"github.com/pterm/pterm"
 
+	"github.com/Arseno25/nexprowl/internal/detect"
 	"github.com/Arseno25/nexprowl/internal/scanner"
 )
 
@@ -24,14 +25,18 @@ func PrintHelp() {
 	section("TARGETS")
 	row("-l FILE", "file with target list (one per line, # = comment)")
 
+	// Counts come from the databases themselves; hard-coded numbers drift the
+	// moment someone adds a signature.
+	tech, waf, takeover := detect.SignatureCounts()
+
 	section("MODULES  (-m, default: all)")
 	row("dns", "A/AAAA/MX/NS/TXT/CNAME · wildcard detect · AXFR zone transfer")
-	row("sub", "passive enum (5 sources) + bruteforce + wildcard filtering")
+	row("sub", "passive sources + bruteforce + wildcard filtering")
 	row("ports", "TCP connect scan · service naming · banner grabbing")
-	row("http", "web probe + tech detect (70 sigs) + WAF detect (passive & active)")
+	row("http", fmt.Sprintf("web probe + tech detect (%d sigs) + WAF detect (%d sigs)", tech, waf))
 	row("vhost", "hidden virtual host discovery (Host-header & SNI fuzzing)")
 	row("tls", "certificate info · expiry check · SANs extraction")
-	row("takeover", "dangling CNAME → claimable service detection (50 services)")
+	row("takeover", fmt.Sprintf("dangling CNAME → claimable service detection (%d services)", takeover))
 	row("crawl", "bounded in-scope HTML/JS/robots/sitemap endpoint discovery")
 
 	section("SCAN TUNING")

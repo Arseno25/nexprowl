@@ -74,10 +74,12 @@ Slack, or Discord. Without it, GitHub falls back to a generic avatar card.
 
 ## 3. Enable Discussions
 
-**Settings → General → Features → Discussions → Set up discussions.**
+**Optional.** Nothing in the repository links to Discussions right now — the
+docs point at Issues instead, so there are no broken links either way. Enable it
+if you want questions kept out of the issue tracker, then update `SUPPORT.md`
+and `.github/ISSUE_TEMPLATE/config.yml` to point at it.
 
-Required: `.github/ISSUE_TEMPLATE/config.yml` and `SUPPORT.md` both link to the
-discussions page. Until it is enabled, those links 404.
+**Settings → General → Features → Discussions → Set up discussions.**
 
 Suggested categories (delete the defaults you will not use):
 

@@ -23,10 +23,7 @@ produces no release.
 git checkout main
 git pull
 go mod tidy
-gofmt -l .            # must print nothing
-go vet ./...
-go test -race ./...
-go build ./...
+make check            # gofmt, vet, race tests, coverage floor, build
 ```
 
 If GoReleaser is installed locally, dry-run the whole release first:
@@ -58,14 +55,9 @@ contains it.
 
 ## Cut the release
 
-```bash
-git checkout main
-git pull
-go mod tidy
-go fmt ./...
-go vet ./...
-go test -race ./...
+Once the pre-flight above is clean and the changelog is committed:
 
+```bash
 git tag -a v0.1.0 -m "NexProwl v0.1.0"
 git push origin v0.1.0
 ```
