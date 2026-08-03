@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.0]
+## [0.1.0] - 2026-08-03
 
 First public release. NexProwl was developed privately before this point; the
 sections below describe the tool as it ships in `v0.1.0`, not a diff against an
