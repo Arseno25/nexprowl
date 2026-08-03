@@ -51,7 +51,7 @@ type dohAnswer struct {
 }
 
 type dohResponse struct {
-	Status int          `json:"Status"`
+	Status int         `json:"Status"`
 	Answer []dohAnswer `json:"Answer"`
 }
 

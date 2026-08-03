@@ -3,7 +3,7 @@ package modules
 import (
 	"testing"
 
-	"nexprowl/internal/scanner"
+	"github.com/Arseno25/nexprowl/internal/scanner"
 )
 
 func TestNormalizeCrawlURL(t *testing.T) {

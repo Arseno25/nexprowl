@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"nexprowl/internal/scanner"
+	"github.com/Arseno25/nexprowl/internal/scanner"
 )
 
 func TestGrabBanner(t *testing.T) {

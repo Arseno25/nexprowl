@@ -1,10 +1,36 @@
 // Package scanner defines the core types, event system, and scan engine.
 package scanner
 
-import "time"
+import (
+	"fmt"
+	"runtime"
+	"strings"
+	"time"
+)
 
-// Version of the tool.
-const Version = "2.1.0"
+// Build metadata. Overridden at link time by GoReleaser / the Makefile:
+//
+//	-X github.com/Arseno25/nexprowl/internal/scanner.Version=0.1.0
+//	-X github.com/Arseno25/nexprowl/internal/scanner.Commit=<sha>
+//	-X github.com/Arseno25/nexprowl/internal/scanner.Date=<RFC3339>
+//
+// A plain "go build"/"go install" leaves the defaults in place.
+var (
+	Version = "dev"
+	Commit  = "none"
+	Date    = "unknown"
+)
+
+// BuildInfo renders the multi-line `nexprowl version` output.
+func BuildInfo() string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "NexProwl %s\n", Version)
+	fmt.Fprintf(&b, "  commit:  %s\n", Commit)
+	fmt.Fprintf(&b, "  built:   %s\n", Date)
+	fmt.Fprintf(&b, "  go:      %s\n", runtime.Version())
+	fmt.Fprintf(&b, "  os/arch: %s/%s\n", runtime.GOOS, runtime.GOARCH)
+	return b.String()
+}
 
 // Options configures a scan run.
 type Options struct {

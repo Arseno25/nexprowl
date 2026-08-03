@@ -7,7 +7,7 @@ import (
 	"net"
 	"time"
 
-	"nexprowl/internal/scanner"
+	"github.com/Arseno25/nexprowl/internal/scanner"
 )
 
 // TLSSeed runs before subdomain discovery so SANs feed enumeration.

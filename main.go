@@ -15,14 +15,18 @@ import (
 	"syscall"
 	"time"
 
-	"nexprowl/internal/config"
-	"nexprowl/internal/modules"
-	"nexprowl/internal/report"
-	"nexprowl/internal/scanner"
-	"nexprowl/internal/ui"
+	"github.com/Arseno25/nexprowl/internal/config"
+	"github.com/Arseno25/nexprowl/internal/modules"
+	"github.com/Arseno25/nexprowl/internal/report"
+	"github.com/Arseno25/nexprowl/internal/scanner"
+	"github.com/Arseno25/nexprowl/internal/ui"
 )
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "version" {
+		fmt.Print(scanner.BuildInfo())
+		return
+	}
 	if len(os.Args) > 1 && os.Args[1] == "diff" {
 		changed, err := runDiff(os.Args[2:])
 		if err != nil {
@@ -46,7 +50,7 @@ func main() {
 		return
 	}
 	if cfg.ShowVer {
-		fmt.Printf("NexProwl v%s by shadow0x0\n", scanner.Version)
+		fmt.Print(scanner.BuildInfo())
 		return
 	}
 	cfg.Output = report.ResolveOutputPath(cfg.Output, time.Now())

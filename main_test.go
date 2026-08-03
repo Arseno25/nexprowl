@@ -8,28 +8,64 @@ import (
 	"strings"
 	"testing"
 
-	"nexprowl/internal/report"
-	"nexprowl/internal/scanner"
+	"github.com/Arseno25/nexprowl/internal/report"
+	"github.com/Arseno25/nexprowl/internal/scanner"
 )
 
-func TestCLIHelpVersionAndValidation(t *testing.T) {
+// buildBinary compiles the CLI into a temp dir with the given extra build
+// flags and returns its path.
+func buildBinary(t *testing.T, extra ...string) string {
+	t.Helper()
 	binary := filepath.Join(t.TempDir(), "nexprowl")
-	if runtime.GOOS == "windows" {
-		binary += ".exe"
-	}
 	goBinary := filepath.Join(runtime.GOROOT(), "bin", "go")
 	if runtime.GOOS == "windows" {
+		binary += ".exe"
 		goBinary += ".exe"
 	}
-	build := exec.Command(goBinary, "build", "-trimpath", "-o", binary, ".")
-	if output, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("manual build failed: %v\n%s", err, output)
+	args := append([]string{"build", "-trimpath"}, extra...)
+	args = append(args, "-o", binary, ".")
+	if output, err := exec.Command(goBinary, args...).CombinedOutput(); err != nil {
+		t.Fatalf("build %v failed: %v\n%s", args, err, output)
 	}
+	return binary
+}
 
-	version := exec.Command(binary, "-version")
-	if output, err := version.CombinedOutput(); err != nil ||
-		!strings.Contains(string(output), "NexProwl v"+scanner.Version) {
-		t.Fatalf("version output = %q, %v", output, err)
+// TestVersionLinkerFlags pins the exact -X paths used by .goreleaser.yaml, so
+// a package move that silently breaks release version stamping fails here.
+func TestVersionLinkerFlags(t *testing.T) {
+	const pkg = "github.com/Arseno25/nexprowl/internal/scanner"
+	binary := buildBinary(t, "-ldflags",
+		"-X "+pkg+".Version=9.9.9 -X "+pkg+".Commit=deadbeef -X "+pkg+".Date=2026-01-02T03:04:05Z")
+
+	output, err := exec.Command(binary, "version").CombinedOutput()
+	if err != nil {
+		t.Fatalf("version: %v\n%s", err, output)
+	}
+	for _, want := range []string{"NexProwl 9.9.9", "deadbeef", "2026-01-02T03:04:05Z"} {
+		if !strings.Contains(string(output), want) {
+			t.Fatalf("version output %q missing %q", output, want)
+		}
+	}
+}
+
+func TestCLIHelpVersionAndValidation(t *testing.T) {
+	binary := buildBinary(t)
+
+	// Both spellings must report the same build metadata, and the linker-flag
+	// variables must survive a plain build with their documented defaults.
+	for _, args := range [][]string{{"-version"}, {"--version"}, {"version"}} {
+		output, err := exec.Command(binary, args...).CombinedOutput()
+		if err != nil {
+			t.Fatalf("%v: %v\n%s", args, err, output)
+		}
+		for _, want := range []string{
+			"NexProwl " + scanner.Version, "commit:", "built:", "go:", "os/arch:",
+			runtime.GOOS + "/" + runtime.GOARCH,
+		} {
+			if !strings.Contains(string(output), want) {
+				t.Fatalf("%v output %q missing %q", args, output, want)
+			}
+		}
 	}
 	help := exec.Command(binary, "-no-color", "-h")
 	if output, err := help.CombinedOutput(); err != nil ||

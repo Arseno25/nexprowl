@@ -1,4 +1,4 @@
-module nexprowl
+module github.com/Arseno25/nexprowl
 
 go 1.24.0
 

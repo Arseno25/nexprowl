@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"nexprowl/internal/data"
-	"nexprowl/internal/scanner"
+	"github.com/Arseno25/nexprowl/internal/data"
+	"github.com/Arseno25/nexprowl/internal/scanner"
 )
 
 // Config is the fully-resolved runtime configuration.
@@ -110,9 +110,12 @@ func Load() (*Config, error) {
 
 	// A zero/negative pool size starves every module worker loop and hangs
 	// the scan on an unbuffered job channel, so clamp before anything uses it.
-	*workers = atLeast(*workers, 1)
-	*concurrency = atLeast(*concurrency, 1)
-	*timeout = atLeast(*timeout, 1)
+	// The upper bounds stop a typo ("-t 3000000") from allocating a job
+	// channel and goroutine set large enough to exhaust the host; no real
+	// scan benefits past these values.
+	*workers = clamp(*workers, 1, maxWorkers)
+	*concurrency = clamp(*concurrency, 1, maxConcurrency)
+	*timeout = clamp(*timeout, 1, maxTimeoutSeconds)
 	*jitter = atLeast(*jitter, 0)
 
 	if _, err := scanner.ParseProxyURL(strings.TrimSpace(*proxyURL)); err != nil {
@@ -269,7 +272,7 @@ func Load() (*Config, error) {
 		Rate:        *rate,
 		Include:     includeDomains,
 		Exclude:     excludeDomains,
-		MaxHosts:    atLeast(*maxHosts, 1),
+		MaxHosts:    clamp(*maxHosts, 1, maxHostsCeiling),
 		ScanAllIPs:  *scanAllIPs,
 		PortsSubs:   *portsSubs,
 		ProbeBoth:   *probeBoth,
@@ -293,9 +296,27 @@ func Load() (*Config, error) {
 	return cfg, nil
 }
 
+// Resource ceilings for the tuning flags. See the clamp call in Load.
+const (
+	maxWorkers        = 10000
+	maxConcurrency    = 1000
+	maxTimeoutSeconds = 3600
+	maxHostsCeiling   = 1000000
+)
+
 func atLeast(v, floor int) int {
 	if v < floor {
 		return floor
+	}
+	return v
+}
+
+func clamp(v, floor, ceiling int) int {
+	if v < floor {
+		return floor
+	}
+	if v > ceiling {
+		return ceiling
 	}
 	return v
 }

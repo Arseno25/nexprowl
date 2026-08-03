@@ -11,7 +11,7 @@ import (
 
 	"github.com/pterm/pterm"
 
-	"nexprowl/internal/scanner"
+	"github.com/Arseno25/nexprowl/internal/scanner"
 )
 
 var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}

@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"nexprowl/internal/detect"
-	"nexprowl/internal/scanner"
+	"github.com/Arseno25/nexprowl/internal/detect"
+	"github.com/Arseno25/nexprowl/internal/scanner"
 )
 
 // Ports is a rustscan-style TCP connect scanner: large worker pool,

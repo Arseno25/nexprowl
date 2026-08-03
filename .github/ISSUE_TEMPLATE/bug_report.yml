@@ -1,0 +1,82 @@
+name: Bug report
+description: Something in NexProwl behaves incorrectly
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report.
+
+        **Do not open a public issue for a security vulnerability.**
+        See [SECURITY.md](../../blob/main/SECURITY.md) for private reporting.
+
+  - type: checkboxes
+    id: authorization
+    attributes:
+      label: Authorization
+      options:
+        - label: The scan that triggered this bug ran against a target I own or am authorized to test.
+          required: true
+        - label: This report contains no credentials, session tokens, API keys, or unredacted third-party data.
+          required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: NexProwl version
+      description: Output of `nexprowl version`
+      placeholder: "NexProwl 0.1.0 / commit abc1234 / go1.24.0 / linux/amd64"
+    validations:
+      required: true
+
+  - type: input
+    id: command
+    attributes:
+      label: Command
+      description: The exact command you ran. Redact real target names if needed.
+      placeholder: "nexprowl example.com -m dns,sub -t 500"
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected to happen
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What actually happened
+      description: Include the error output or a stack trace. Use `-no-color` for readable logs.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Prefer a reproduction against `example.com` or a local lab host.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Linux
+        - macOS
+        - Windows
+        - Other / BSD
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Proxy, custom resolvers, container, restricted network, etc.

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://raw.githubusercontent.com/ScoopInstaller/Scoop/master/schema.json",
+  "version": "REPLACE_WITH_VERSION",
+  "description": "A fast, single-binary reconnaissance engine for DNS, subdomains, ports, HTTP, TLS, virtual hosts, takeovers, and crawling.",
+  "homepage": "https://github.com/Arseno25/nexprowl",
+  "license": "MIT",
+  "notes": [
+    "NexProwl is for authorized security testing only.",
+    "Run 'nexprowl --help' for the full flag reference."
+  ],
+  "architecture": {
+    "64bit": {
+      "url": "https://github.com/Arseno25/nexprowl/releases/download/vREPLACE_WITH_VERSION/nexprowl_REPLACE_WITH_VERSION_windows_amd64.zip",
+      "hash": "REPLACE_WITH_SHA256_FROM_CHECKSUMS_TXT"
+    },
+    "arm64": {
+      "url": "https://github.com/Arseno25/nexprowl/releases/download/vREPLACE_WITH_VERSION/nexprowl_REPLACE_WITH_VERSION_windows_arm64.zip",
+      "hash": "REPLACE_WITH_SHA256_FROM_CHECKSUMS_TXT"
+    }
+  },
+  "bin": "nexprowl.exe",
+  "checkver": {
+    "github": "https://github.com/Arseno25/nexprowl"
+  },
+  "autoupdate": {
+    "architecture": {
+      "64bit": {
+        "url": "https://github.com/Arseno25/nexprowl/releases/download/v$version/nexprowl_$version_windows_amd64.zip"
+      },
+      "arm64": {
+        "url": "https://github.com/Arseno25/nexprowl/releases/download/v$version/nexprowl_$version_windows_arm64.zip"
+      }
+    },
+    "hash": {
+      "url": "https://github.com/Arseno25/nexprowl/releases/download/v$version/checksums.txt"
+    }
+  }
+}

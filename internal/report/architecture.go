@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"nexprowl/internal/scanner"
+	"github.com/Arseno25/nexprowl/internal/scanner"
 )
 
 // ─── Mermaid architecture diagram ─────────────────────────

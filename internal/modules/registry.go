@@ -1,7 +1,7 @@
 // Package modules implements the scan capabilities of NexProwl.
 package modules
 
-import "nexprowl/internal/scanner"
+import "github.com/Arseno25/nexprowl/internal/scanner"
 
 // All returns every module in execution order.
 // Order matters: dns feeds subdomain filtering + ports; sub feeds http/takeover;

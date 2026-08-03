@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"nexprowl/internal/scanner"
+	"github.com/Arseno25/nexprowl/internal/scanner"
 )
 
 // Crawl performs a bounded, same-scope crawl over live web services.

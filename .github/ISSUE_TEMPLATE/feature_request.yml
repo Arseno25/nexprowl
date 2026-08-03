@@ -1,0 +1,56 @@
+name: Feature request
+description: Suggest a new module, flag, output format, or signature
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        NexProwl stays dependency-light and focused on **authorized** recon.
+        Requests that only make sense for unauthorized scanning, evasion of
+        legitimate defenses on third-party systems, or exploitation will be
+        closed.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - New scan module
+        - New flag / existing module option
+        - Detection signature (tech / WAF / CDN / takeover)
+        - Passive subdomain source
+        - Output format or report
+        - Packaging / distribution
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the recon workflow that is painful today.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behaviour
+      description: Sketch the CLI surface, e.g. `nexprowl example.com -m newmodule`.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Existing flags, other tools, or shell pipelines you tried first.
+
+  - type: checkboxes
+    id: deps
+    attributes:
+      label: Dependencies
+      options:
+        - label: This can be implemented with the Go standard library (NexProwl has one direct dependency and aims to keep it that way).
