@@ -93,9 +93,9 @@ func testFixtures() map[string]dohFixture {
 		"v6only.example|AAAA": {0, []dohAnswer{
 			{Name: "v6only.example.", Type: dohTypeAAAA, Data: "2001:db8::1"},
 		}},
-		"nx.example|A":     {status: 3},
-		"nx.example|AAAA":  {status: 3},
-		"nx.example|CNAME": {status: 3},
+		"nx.example|A":       {status: 3},
+		"nx.example|AAAA":    {status: 3},
+		"nx.example|CNAME":   {status: 3},
 		"servfail.example|A": {status: 2},
 	}
 }
@@ -258,11 +258,11 @@ func TestReverseArpa(t *testing.T) {
 
 func TestParseTXTData(t *testing.T) {
 	for in, want := range map[string]string{
-		`"v=spf1 -all"`:     "v=spf1 -all",
-		`"part1" "part2"`:   "part1part2",
-		`"a\"b"`:            `a"b`, // escaped quote inside character-string
-		"plain-unquoted":    "plain-unquoted",
-		`""`:                "",
+		`"v=spf1 -all"`:   "v=spf1 -all",
+		`"part1" "part2"`: "part1part2",
+		`"a\"b"`:          `a"b`, // escaped quote inside character-string
+		"plain-unquoted":  "plain-unquoted",
+		`""`:              "",
 	} {
 		if got := parseTXTData(in); got != want {
 			t.Errorf("parseTXTData(%q) = %q, want %q", in, got, want)

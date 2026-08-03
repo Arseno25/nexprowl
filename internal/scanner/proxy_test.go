@@ -25,10 +25,10 @@ func TestParseProxyURL(t *testing.T) {
 	}
 
 	invalid := []string{
-		"ftp://127.0.0.1:21",      // unsupported scheme
-		"http://",                 // missing host
-		"socks5://",               // missing host
-		"://nohost",               // unparseable
+		"ftp://127.0.0.1:21",       // unsupported scheme
+		"http://",                  // missing host
+		"socks5://",                // missing host
+		"://nohost",                // unparseable
 		"http://127.0.0.1:badport", // invalid port
 	}
 	for _, raw := range invalid {

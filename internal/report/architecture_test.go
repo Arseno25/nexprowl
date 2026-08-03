@@ -70,11 +70,11 @@ func TestArchitectureDiagramTruncation(t *testing.T) {
 
 func TestMermaidSafe(t *testing.T) {
 	for in, want := range map[string]string{
-		`He said "hello"`:     "He said 'hello'",
-		`a\b`:                 "a/b",
+		`He said "hello"`:        "He said 'hello'",
+		`a\b`:                    "a/b",
 		"<script>alert</script>": "(script)alert(/script)",
-		"`code`":              "'code'",
-		"a & b":               "a + b",
+		"`code`":                 "'code'",
+		"a & b":                  "a + b",
 	} {
 		if got := mermaidSafe(in); got != want {
 			t.Errorf("mermaidSafe(%q) = %q, want %q", in, got, want)
@@ -93,9 +93,9 @@ func TestArchTrim(t *testing.T) {
 
 func TestArchitectureCompanionPath(t *testing.T) {
 	for in, want := range map[string]string{
-		"results/out.html":    "results/out-architecture.md",
-		"results/out.json":    "results/out-architecture.md",
-		"report.csv":          "report-architecture.md",
+		"results/out.html": "results/out-architecture.md",
+		"results/out.json": "results/out-architecture.md",
+		"report.csv":       "report-architecture.md",
 	} {
 		if got := architectureCompanionPath(in); got != want {
 			t.Errorf("architectureCompanionPath(%q) = %q, want %q", in, got, want)
