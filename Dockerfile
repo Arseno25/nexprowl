@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ─── build ────────────────────────────────────────────────────────────────
-FROM golang:1.24-alpine AS build
+FROM golang:1.26-alpine AS build
 
 # Version metadata, injected at link time. Override on the build command line:
 #   docker build --build-arg VERSION=0.1.0 --build-arg COMMIT=$(git rev-parse HEAD) .
