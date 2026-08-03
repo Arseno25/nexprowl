@@ -37,10 +37,13 @@ No linters or test frameworks beyond the standard toolchain. Do not add any.
 ```bash
 git clone https://github.com/Arseno25/nexprowl.git
 cd nexprowl
-go build ./...
-go test ./...
+make build
 ./nexprowl --help     # or .\nexprowl.exe --help on Windows
+make check            # everything CI checks
 ```
+
+`make help` lists every target. Without make, the equivalents are
+`go build -o nexprowl .`, `go test ./...`, and so on.
 
 ## Fork and branch workflow
 
@@ -63,11 +66,8 @@ anyway. A recon run's output can identify a client.
 
 ## Formatting
 
-`gofmt` is the entire style guide. CI fails if `gofmt -l .` prints anything.
-
-```bash
-gofmt -w .
-```
+`gofmt` is the entire style guide. CI fails if `gofmt -l .` prints anything;
+`make fmt` fixes it.
 
 Line endings are LF, enforced by `.gitattributes`. On Windows, if `gofmt -l .`
 lists files you never touched, your checkout has CRLF endings:
@@ -83,12 +83,10 @@ a non-obvious choice was made, no comment restating the next line.
 ## Testing
 
 ```bash
-gofmt -l .                                  # must print nothing
-go vet ./...
-go test -count=1 ./...
-go test -count=1 -race ./...                # needs a C compiler
-go test -coverprofile=coverage.out ./...    # project floor: 70%
-go tool cover -func=coverage.out | tail -1
+make test     # go test ./...
+make race     # with the race detector; needs a C compiler
+make cover    # with the 70% coverage floor enforced
+make check    # all of the above, plus gofmt and vet — what CI runs
 ```
 
 Rules for tests:
@@ -130,10 +128,7 @@ changelog — the rest are filtered out by `.goreleaser.yaml`.
 
 Before opening:
 
-- [ ] `gofmt -l .` prints nothing
-- [ ] `go vet ./...` passes
-- [ ] `go test -count=1 -race ./...` passes
-- [ ] Coverage is at or above 70%
+- [ ] `make check` passes
 - [ ] No new direct dependency (or the PR justifies why one is unavoidable)
 - [ ] `CHANGELOG.md` updated under `## [Unreleased]`
 - [ ] Docs updated if the CLI surface changed — the flag must appear in **all
@@ -142,8 +137,8 @@ Before opening:
 
 What to expect:
 
-- CI runs format, vet, race tests, the coverage floor, a cross-compile of every
-  release target, and `goreleaser check`. All must pass.
+- CI runs everything `make check` does, plus a Makefile build, a cross-compile
+  of every release target, and `goreleaser check`. All must pass.
 - Reviews focus on: does it hold under a hostile response from the scanned host,
   does it honour `ctx`, does it stay in scope, is it tested.
 - Small, focused PRs get merged. A PR that reformats unrelated files, bumps
@@ -237,5 +232,4 @@ Maintainers only. See [docs/RELEASE.md](docs/RELEASE.md).
 
 ## Questions
 
-Open a [discussion](https://github.com/Arseno25/nexprowl/discussions) or see
-[SUPPORT.md](SUPPORT.md).
+See [SUPPORT.md](SUPPORT.md).

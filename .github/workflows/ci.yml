@@ -38,6 +38,18 @@ jobs:
       - name: Build
         run: go build ./...
 
+      # The Makefile is the documented clone-and-build path, so a broken target
+      # is a broken install. Also proves the version ldflags still resolve.
+      - name: Build through the Makefile
+        run: |
+          set -euo pipefail
+          make build
+          ./nexprowl version
+          if ./nexprowl version | grep -q 'commit:  none'; then
+            echo "::error::Makefile did not stamp the commit into the binary"
+            exit 1
+          fi
+
   cross-build:
     name: Cross-compile
     runs-on: ubuntu-latest

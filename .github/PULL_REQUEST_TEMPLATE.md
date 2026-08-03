@@ -19,10 +19,7 @@ Security vulnerabilities: do not open a PR. See SECURITY.md.
 
 ## Checklist
 
-- [ ] `gofmt -l .` prints nothing
-- [ ] `go vet ./...` passes
-- [ ] `go test -count=1 -race ./...` passes
-- [ ] Coverage stays at or above the 70% project floor
+- [ ] `make check` passes (gofmt, vet, race tests, 70% coverage floor, build)
 - [ ] New branches, parsers, and security decisions have tests
 - [ ] No new direct dependency was added (or the PR explains why one is unavoidable)
 - [ ] Tests do not depend on live third-party services
