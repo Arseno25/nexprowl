@@ -122,6 +122,69 @@ scan logic never touches the terminal and `-silent` costs nothing.
 
 ## Installation
 
+Pick whichever matches your platform. Homebrew and APT keep NexProwl updated
+with the rest of your system; the rest need a manual upgrade.
+
+| Platform | Command |
+|---|---|
+| macOS / Linux | `brew install Arseno25/tap/nexprowl` |
+| Debian / Ubuntu | `apt install nexprowl` — [after adding the repo](#debian--ubuntu-apt) |
+| Fedora / RHEL | `rpm -i nexprowl_<version>_linux_<arch>.rpm` from the release page |
+| Windows | [download a release](#download-a-release) |
+| Any, with Go | `go install github.com/Arseno25/nexprowl@latest` |
+| Any, with Docker | [build the image](#docker) |
+
+### Homebrew
+
+Works on macOS and Linux.
+
+```bash
+brew install Arseno25/tap/nexprowl
+nexprowl version
+```
+
+Upgrade with `brew upgrade nexprowl`, remove with `brew uninstall nexprowl`.
+
+This is the smoothest route on macOS: the cask clears the Gatekeeper quarantine
+flag during install, so you never hit the "cannot be opened because the
+developer cannot be verified" dialog that a browser download triggers.
+
+### Debian / Ubuntu (APT)
+
+Add the signed repository once, then NexProwl updates with `apt upgrade` like
+anything else. `amd64` and `arm64` are both published.
+
+```bash
+curl -fsSL https://arseno25.github.io/nexprowl/apt/nexprowl-archive-keyring.gpg \
+  | sudo tee /usr/share/keyrings/nexprowl-archive-keyring.gpg > /dev/null
+
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/nexprowl-archive-keyring.gpg] https://arseno25.github.io/nexprowl/apt stable main" \
+  | sudo tee /etc/apt/sources.list.d/nexprowl.list
+
+sudo apt update && sudo apt install nexprowl
+```
+
+The repository indices are GPG-signed, and `signed-by=` scopes that key to this
+repository only — it cannot be used to vouch for packages from anywhere else on
+your system.
+
+To remove it:
+
+```bash
+sudo apt remove nexprowl
+sudo rm /etc/apt/sources.list.d/nexprowl.list /usr/share/keyrings/nexprowl-archive-keyring.gpg
+```
+
+### Fedora / RHEL / openSUSE
+
+`.rpm` packages are attached to every
+[release](https://github.com/Arseno25/nexprowl/releases/latest). There is no
+hosted YUM/DNF repository yet, so install the file directly:
+
+```bash
+sudo rpm -i nexprowl_0.1.0_linux_amd64.rpm
+```
+
 ### Go install
 
 Requires Go 1.24 or newer.
@@ -212,11 +275,15 @@ No image is published to a registry yet.
 
 ### Not available yet
 
-There is **no** Homebrew formula, Scoop bucket, apt/dnf package, AUR package,
-Kali package, or published Docker image. Templates for some of these live in
-[`packaging/`](packaging/README.md), unfilled and unpublished. See the
-[Roadmap](#roadmap). Anyone distributing a "NexProwl" package through those
-channels today is not doing so with the maintainer's involvement.
+There is **no** Scoop bucket, AUR package, hosted DNF/YUM repository,
+distribution-official package (Debian, Ubuntu, Fedora, Kali, Arch), or
+published container image. See the [Roadmap](#roadmap).
+
+NexProwl is **not** in Homebrew core — `brew install nexprowl` without the
+`Arseno25/tap/` prefix installs something else, or nothing.
+
+Anyone distributing a "NexProwl" package through a channel not listed above is
+not doing so with the maintainer's involvement.
 
 ## Quick start
 
@@ -719,11 +786,14 @@ something large.
 
 **Distribution**
 
-- [ ] Homebrew tap (template in [`packaging/homebrew/`](packaging/homebrew/nexprowl.rb))
+- [x] Homebrew tap — `brew install Arseno25/tap/nexprowl`
+- [x] `.deb` / `.rpm` packages, and a signed APT repository
 - [ ] Scoop bucket (template in [`packaging/scoop/`](packaging/scoop/nexprowl.json))
 - [ ] Published container image on GHCR
-- [ ] `.deb` and `.rpm` packages
+- [ ] Hosted DNF/YUM repository
 - [ ] AUR package
+- [ ] Submission to distribution-official repositories (Debian, Kali) — needs a
+      distro maintainer sponsor, so this is a long game rather than a task
 
 **CLI**
 
