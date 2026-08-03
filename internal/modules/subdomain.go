@@ -14,7 +14,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"nexprowl/internal/scanner"
+	"github.com/Arseno25/nexprowl/internal/scanner"
 )
 
 // Subdomain discovers subdomains via passive sources (subfinder technique)

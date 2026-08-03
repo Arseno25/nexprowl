@@ -5,7 +5,7 @@ import (
 
 	"github.com/pterm/pterm"
 
-	"nexprowl/internal/scanner"
+	"github.com/Arseno25/nexprowl/internal/scanner"
 )
 
 // PrintHelp renders the full structured help screen.
@@ -13,7 +13,7 @@ func PrintHelp() {
 	pterm.Println()
 	pterm.DefaultCenter.Println(
 		gradientString("N e x P r o w l") +
-			dim.Sprintf("  v%s — all-in-one domain reconnaissance", scanner.Version))
+			dim.Sprintf("  %s — all-in-one domain reconnaissance", scanner.Version))
 	pterm.DefaultCenter.Println(dim.Sprint("by shadow0x0"))
 	pterm.Println()
 
@@ -74,7 +74,9 @@ func PrintHelp() {
 
 	section("MISC")
 	row("-h, --help", "show this help")
-	row("-version", "print version and exit")
+	row("-version", "print version, commit, build date, go/os/arch")
+	row("version", "same as -version (subcommand form)")
+	row("diff OLD NEW", "compare two saved runs; exit 3 when changed")
 
 	section("EXAMPLES")
 	examples([][2]string{

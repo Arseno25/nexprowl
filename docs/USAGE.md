@@ -1,16 +1,34 @@
 # NexProwl — Build and Usage Guide
 
-> NexProwl v2.1.0 · by shadow0x0
+> by shadow0x0 · run `nexprowl version` to see which build you have
 
-NexProwl does not publish release binaries. Build it locally after cloning the
-repository. Go 1.24 or newer is required.
+Platform-by-platform build notes. For prebuilt binaries, `go install`, Docker,
+and the full flag reference, see the [README](../README.md).
 
-## Clone
+**Authorized testing only.** Every example below assumes the target is one you
+own or have written permission to test.
+
+## Install without building
 
 ```bash
-git clone https://github.com/Arseno25/nexprowl.git NexProwl
-cd NexProwl
+go install github.com/Arseno25/nexprowl@latest
 ```
+
+Or download an archive for your platform from the
+[releases page](https://github.com/Arseno25/nexprowl/releases/latest) and verify
+it against `checksums.txt` — see
+[Verifying a release](../README.md#verifying-a-release).
+
+## Build from source
+
+Go 1.24 or newer is required.
+
+```bash
+git clone https://github.com/Arseno25/nexprowl.git
+cd nexprowl
+```
+
+The CLI entrypoint is the module root package, so every build path below is `.`.
 
 ## Windows
 
@@ -63,11 +81,29 @@ sudo mv nexprowl /usr/local/bin/
 nexprowl example.com
 ```
 
+## Stamping version metadata into a local build
+
+A plain `go build` reports `dev` / `none` / `unknown` from `nexprowl version`.
+To stamp real values, pass them to the linker:
+
+```bash
+go build -trimpath -ldflags="-s -w \
+  -X github.com/Arseno25/nexprowl/internal/scanner.Version=$(git describe --tags --always) \
+  -X github.com/Arseno25/nexprowl/internal/scanner.Commit=$(git rev-parse HEAD) \
+  -X github.com/Arseno25/nexprowl/internal/scanner.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  -o nexprowl .
+```
+
+Release builds do this automatically through GoReleaser.
+
 ## Usage Scenarios
 
 ```bash
 # Full help
 nexprowl --help
+
+# Build metadata
+nexprowl version
 
 # Passive bug bounty recon
 nexprowl -l scope.txt -m dns,sub -passive -silent -o results/subs.jsonl

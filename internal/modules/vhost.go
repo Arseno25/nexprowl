@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"nexprowl/internal/detect"
-	"nexprowl/internal/scanner"
+	"github.com/Arseno25/nexprowl/internal/detect"
+	"github.com/Arseno25/nexprowl/internal/scanner"
 )
 
 // VHost discovers virtual hosts on the target IP via Host-header /

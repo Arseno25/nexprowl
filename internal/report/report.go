@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"nexprowl/internal/scanner"
+	"github.com/Arseno25/nexprowl/internal/scanner"
 )
 
 // Format is an output format identifier.

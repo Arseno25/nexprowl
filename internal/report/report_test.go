@@ -9,10 +9,11 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
-	"nexprowl/internal/scanner"
+	"github.com/Arseno25/nexprowl/internal/scanner"
 )
 
 func TestWriteHTML(t *testing.T) {
@@ -240,6 +241,42 @@ func TestWebhookErrorsAndDisabled(t *testing.T) {
 	if err := NotifyWebhook(t.Context(), server.URL, map[string]bool{"ok": false}); err == nil ||
 		!strings.Contains(err.Error(), "status 403") {
 		t.Fatalf("webhook error = %v", err)
+	}
+}
+
+// TestWebhookRejectsNonHTTPSchemes keeps the scan summary off transports the
+// user did not ask for.
+func TestWebhookRejectsNonHTTPSchemes(t *testing.T) {
+	for _, endpoint := range []string{
+		"file:///tmp/leak.json", "ftp://example.test/x", "gopher://example.test", "https://",
+	} {
+		if err := NotifyWebhook(t.Context(), endpoint, map[string]int{"n": 1}); err == nil {
+			t.Errorf("NotifyWebhook accepted %q", endpoint)
+		}
+	}
+}
+
+// TestWebhookDoesNotFollowRedirects: the payload carries full scan results, so
+// a 307 must not replay it to a host the user never named.
+func TestWebhookDoesNotFollowRedirects(t *testing.T) {
+	var relayed atomic.Bool
+	relay := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		relayed.Store(true)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer relay.Close()
+
+	redirector := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, relay.URL, http.StatusTemporaryRedirect)
+	}))
+	defer redirector.Close()
+
+	err := NotifyWebhook(t.Context(), redirector.URL, map[string]string{"target": "example.com"})
+	if err == nil || !strings.Contains(err.Error(), "status 307") {
+		t.Fatalf("redirect error = %v, want a 307 status error", err)
+	}
+	if relayed.Load() {
+		t.Fatal("scan summary was relayed to the redirect target")
 	}
 }
 

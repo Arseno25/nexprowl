@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"nexprowl/internal/detect"
-	"nexprowl/internal/scanner"
+	"github.com/Arseno25/nexprowl/internal/detect"
+	"github.com/Arseno25/nexprowl/internal/scanner"
 )
 
 // takeoverBodyRead caps the body pulled for fingerprint matching. Service
@@ -71,7 +71,13 @@ func (Takeover) Run(ctx context.Context, sc *scanner.ScanContext) error {
 		wg.Add(1)
 		go func(c takeoverCandidate) {
 			defer wg.Done()
-			sem <- struct{}{}
+			// Without the ctx case a cancelled scan still runs a DNS lookup
+			// for every queued candidate before the engine can return.
+			select {
+			case sem <- struct{}{}:
+			case <-ctx.Done():
+				return
+			}
 			defer func() { <-sem }()
 
 			ctxT, cancel := context.WithTimeout(ctx, sc.Opts.Timeout)

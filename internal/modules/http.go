@@ -15,8 +15,8 @@ import (
 	"sync"
 	"time"
 
-	"nexprowl/internal/detect"
-	"nexprowl/internal/scanner"
+	"github.com/Arseno25/nexprowl/internal/detect"
+	"github.com/Arseno25/nexprowl/internal/scanner"
 )
 
 const maxBodyRead = 512 << 10 // 512KB — enough for title + tech signatures

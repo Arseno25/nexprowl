@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"nexprowl/internal/scanner"
+	"github.com/Arseno25/nexprowl/internal/scanner"
 )
 
 type roundTripFunc func(*http.Request) (*http.Response, error)

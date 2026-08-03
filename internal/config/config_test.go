@@ -56,6 +56,49 @@ func TestAtLeast(t *testing.T) {
 	}
 }
 
+// TestClamp pins both ends: the floor keeps a zero pool from hanging, the
+// ceiling keeps a mistyped "-t 3000000" from exhausting the host.
+func TestClamp(t *testing.T) {
+	for _, c := range []struct {
+		name                    string
+		v, floor, ceiling, want int
+	}{
+		{"below floor", -5, 1, 100, 1},
+		{"at floor", 1, 1, 100, 1},
+		{"inside range", 42, 1, 100, 42},
+		{"at ceiling", 100, 1, 100, 100},
+		{"above ceiling", 1 << 30, 1, 100, 100},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			if got := clamp(c.v, c.floor, c.ceiling); got != c.want {
+				t.Errorf("clamp(%d, %d, %d) = %d, want %d", c.v, c.floor, c.ceiling, got, c.want)
+			}
+		})
+	}
+}
+
+// TestLoadClampsResourceFlags checks the ceilings are actually wired into the
+// parsed Options, not just present as constants.
+func TestLoadClampsResourceFlags(t *testing.T) {
+	cfg, err := loadForTest(t, "example.com",
+		"-t", "9999999", "-T", "9999999", "-timeout", "9999999", "-max-hosts", "999999999")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Opts.Workers != maxWorkers {
+		t.Errorf("Workers = %d, want %d", cfg.Opts.Workers, maxWorkers)
+	}
+	if cfg.Opts.Concurrency != maxConcurrency {
+		t.Errorf("Concurrency = %d, want %d", cfg.Opts.Concurrency, maxConcurrency)
+	}
+	if cfg.TimeoutS != maxTimeoutSeconds {
+		t.Errorf("TimeoutS = %d, want %d", cfg.TimeoutS, maxTimeoutSeconds)
+	}
+	if cfg.Opts.MaxHosts != maxHostsCeiling {
+		t.Errorf("MaxHosts = %d, want %d", cfg.Opts.MaxHosts, maxHostsCeiling)
+	}
+}
+
 func TestNormalizeResolvers(t *testing.T) {
 	got := normalizeResolvers([]string{"1.1.1.1", " 8.8.8.8:5353 ", "", "  "})
 	want := []string{"1.1.1.1:53", "8.8.8.8:5353"}

@@ -1,0 +1,45 @@
+# Keep the build context small and free of anything sensitive.
+
+.git
+.github
+.gitignore
+.gitattributes
+.goreleaser.yaml
+
+# Scan output and local target lists must never enter an image layer.
+results/
+out/
+output/
+scan_output/
+*.log
+targets.txt
+resolvers.txt
+test_targets.txt
+final_test.txt
+*_results.json
+*_test.json
+test_*.json
+axfr_test*.json
+batch_results*
+
+# Build artifacts
+bin/
+dist/
+nexprowl
+nexprowl.exe
+nexprowl-*
+*.test
+*.out
+
+# Docs and assets are not needed to compile the binary.
+docs/
+assets/
+packaging/
+*.md
+
+# Editor and OS junk
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini

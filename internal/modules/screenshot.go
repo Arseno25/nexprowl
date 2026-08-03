@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"nexprowl/internal/scanner"
+	"github.com/Arseno25/nexprowl/internal/scanner"
 )
 
 // CaptureScreenshots uses an installed Chrome/Chromium executable so the
@@ -37,14 +37,19 @@ func CaptureScreenshots(ctx context.Context, dir string, results []*scanner.Resu
 	for _, result := range results {
 		for i := range result.Web {
 			web := &result.Web[i]
+			// Take the slot before spawning: a scan with hundreds of live
+			// hosts would otherwise park one goroutine per host on a
+			// semaphore that only ever admits one at a time.
+			select {
+			case sem <- struct{}{}:
+			case <-ctx.Done():
+				wg.Wait()
+				return firstErr
+			}
+
 			wg.Add(1)
 			go func(web *scanner.WebResult) {
 				defer wg.Done()
-				select {
-				case sem <- struct{}{}:
-				case <-ctx.Done():
-					return
-				}
 				defer func() { <-sem }()
 
 				name := screenshotName(web.URL)
